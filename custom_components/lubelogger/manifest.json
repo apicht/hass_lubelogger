@@ -1,0 +1,13 @@
+{
+  "domain": "lubelogger",
+  "name": "LubeLogger",
+  "codeowners": ["@apicht"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/apicht/hass_lubelogger",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/apicht/hass_lubelogger/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

@@ -1,0 +1,191 @@
+add_odometer_record:
+  name: Add Odometer Record
+  description: Add a new odometer reading to a vehicle in LubeLogger
+  fields:
+    vehicle_id:
+      name: Vehicle ID
+      description: The ID of the vehicle in LubeLogger
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+    date:
+      name: Date
+      description: The date of the odometer reading (YYYY-MM-DD format)
+      required: true
+      example: "2024-01-15"
+      selector:
+        date:
+    odometer:
+      name: Odometer
+      description: The odometer reading value
+      required: true
+      example: 50000
+      selector:
+        number:
+          min: 0
+          mode: box
+          unit_of_measurement: mi
+    notes:
+      name: Notes
+      description: Optional notes for this record
+      required: false
+      example: "Regular check"
+      selector:
+        text:
+          multiline: true
+    tags:
+      name: Tags
+      description: Optional comma-separated tags
+      required: false
+      example: "maintenance,routine"
+      selector:
+        text:
+
+add_gas_record:
+  name: Add Gas Record
+  description: Add a new fuel/gas record to a vehicle in LubeLogger. Can also be used for EV charging records.
+  fields:
+    vehicle_id:
+      name: Vehicle ID
+      description: The ID of the vehicle in LubeLogger
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+    date:
+      name: Date
+      description: The date of the fuel purchase (YYYY-MM-DD format)
+      required: true
+      example: "2024-01-15"
+      selector:
+        date:
+    odometer:
+      name: Odometer
+      description: The odometer reading at fill-up
+      required: true
+      example: 50000
+      selector:
+        number:
+          min: 0
+          mode: box
+          unit_of_measurement: mi
+    fuel_consumed:
+      name: Fuel Consumed
+      description: Amount of fuel added (gallons, liters, or kWh for EVs)
+      required: true
+      example: 12.5
+      selector:
+        number:
+          min: 0
+          step: 0.01
+          mode: box
+    cost:
+      name: Cost
+      description: Total cost of the fuel
+      required: true
+      example: 45.00
+      selector:
+        number:
+          min: 0
+          step: 0.01
+          mode: box
+          unit_of_measurement: "$"
+    is_fill_to_full:
+      name: Fill to Full
+      description: Was this a complete fill-up? Set to false for partial fills or EV charging.
+      required: false
+      default: true
+      selector:
+        boolean:
+    missed_fuel_up:
+      name: Missed Fuel Up
+      description: Was a previous fill-up missed/not recorded?
+      required: false
+      default: false
+      selector:
+        boolean:
+    notes:
+      name: Notes
+      description: Optional notes for this record
+      required: false
+      example: "EV charging session"
+      selector:
+        text:
+          multiline: true
+    tags:
+      name: Tags
+      description: Optional comma-separated tags
+      required: false
+      example: "ev,charging"
+      selector:
+        text:
+
+add_reminder:
+  name: Add Reminder
+  description: Add a maintenance reminder to a vehicle in LubeLogger
+  fields:
+    vehicle_id:
+      name: Vehicle ID
+      description: The ID of the vehicle in LubeLogger
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          mode: box
+    description:
+      name: Description
+      description: What the reminder is for
+      required: true
+      example: "Oil Change"
+      selector:
+        text:
+    due_date:
+      name: Due Date
+      description: When the reminder is due (YYYY-MM-DD format)
+      required: false
+      example: "2024-03-01"
+      selector:
+        date:
+    due_odometer:
+      name: Due Odometer
+      description: Odometer reading when reminder is due
+      required: false
+      example: 55000
+      selector:
+        number:
+          min: 0
+          mode: box
+          unit_of_measurement: mi
+    metric:
+      name: Metric
+      description: How to track the reminder
+      required: false
+      default: "Both"
+      selector:
+        select:
+          options:
+            - label: "Date only"
+              value: "Date"
+            - label: "Odometer only"
+              value: "Odometer"
+            - label: "Both date and odometer"
+              value: "Both"
+    notes:
+      name: Notes
+      description: Optional notes for this reminder
+      required: false
+      selector:
+        text:
+          multiline: true
+    tags:
+      name: Tags
+      description: Optional comma-separated tags
+      required: false
+      selector:
+        text:

@@ -1,0 +1,163 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to LubeLogger",
+        "description": "Enter your LubeLogger server details. If using OIDC for web login, you'll need to set a password in LubeLogger user settings or create a dedicated API user.",
+        "data": {
+          "url": "URL",
+          "username": "Username",
+          "password": "Password"
+        },
+        "data_description": {
+          "url": "Full URL to your LubeLogger instance (e.g., https://lubelogger.example.com)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate",
+        "description": "Authentication failed. Please re-enter your credentials.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to LubeLogger server. Check the URL and ensure the server is running.",
+      "invalid_auth": "Invalid authentication credentials. Check your username and password.",
+      "unknown": "An unexpected error occurred. Check the logs for more details."
+    },
+    "abort": {
+      "already_configured": "This LubeLogger instance is already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "service_record_cost": {
+        "name": "Service Record Cost"
+      },
+      "repair_record_cost": {
+        "name": "Repair Record Cost"
+      },
+      "upgrade_record_cost": {
+        "name": "Upgrade Record Cost"
+      },
+      "tax_record_cost": {
+        "name": "Tax Record Cost"
+      },
+      "gas_record_cost": {
+        "name": "Gas Record Cost"
+      },
+      "last_reported_odometer": {
+        "name": "Odometer"
+      },
+      "next_reminder": {
+        "name": "Next Reminder"
+      }
+    }
+  },
+  "services": {
+    "add_odometer_record": {
+      "name": "Add Odometer Record",
+      "description": "Add a new odometer reading to a vehicle in LubeLogger.",
+      "fields": {
+        "vehicle_id": {
+          "name": "Vehicle ID",
+          "description": "The ID of the vehicle in LubeLogger."
+        },
+        "date": {
+          "name": "Date",
+          "description": "The date of the odometer reading."
+        },
+        "odometer": {
+          "name": "Odometer",
+          "description": "The odometer reading value."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes for this record."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Optional comma-separated tags."
+        }
+      }
+    },
+    "add_gas_record": {
+      "name": "Add Gas Record",
+      "description": "Add a new fuel/gas record to a vehicle. Can also be used for EV charging records.",
+      "fields": {
+        "vehicle_id": {
+          "name": "Vehicle ID",
+          "description": "The ID of the vehicle in LubeLogger."
+        },
+        "date": {
+          "name": "Date",
+          "description": "The date of the fuel purchase."
+        },
+        "odometer": {
+          "name": "Odometer",
+          "description": "The odometer reading at fill-up."
+        },
+        "fuel_consumed": {
+          "name": "Fuel Consumed",
+          "description": "Amount of fuel added (gallons, liters, or kWh for EVs)."
+        },
+        "cost": {
+          "name": "Cost",
+          "description": "Total cost of the fuel."
+        },
+        "is_fill_to_full": {
+          "name": "Fill to Full",
+          "description": "Was this a complete fill-up?"
+        },
+        "missed_fuel_up": {
+          "name": "Missed Fuel Up",
+          "description": "Was a previous fill-up missed?"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes for this record."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Optional comma-separated tags."
+        }
+      }
+    },
+    "add_reminder": {
+      "name": "Add Reminder",
+      "description": "Add a maintenance reminder to a vehicle.",
+      "fields": {
+        "vehicle_id": {
+          "name": "Vehicle ID",
+          "description": "The ID of the vehicle in LubeLogger."
+        },
+        "description": {
+          "name": "Description",
+          "description": "What the reminder is for."
+        },
+        "due_date": {
+          "name": "Due Date",
+          "description": "When the reminder is due."
+        },
+        "due_odometer": {
+          "name": "Due Odometer",
+          "description": "Odometer reading when reminder is due."
+        },
+        "metric": {
+          "name": "Metric",
+          "description": "How to track the reminder (Date, Odometer, or Both)."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes for this reminder."
+        },
+        "tags": {
+          "name": "Tags",
+          "description": "Optional comma-separated tags."
+        }
+      }
+    }
+  }
+}
