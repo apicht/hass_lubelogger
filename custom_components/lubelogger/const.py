@@ -29,6 +29,15 @@ SENSOR_GAS_COST: Final = "gas_record_cost"
 SENSOR_ODOMETER: Final = "last_reported_odometer"
 SENSOR_NEXT_REMINDER: Final = "next_reminder"
 
+# Unit type markers for dynamic unit resolution
+UNIT_TYPE_CURRENCY: Final = "currency"
+UNIT_TYPE_DISTANCE: Final = "distance"
+
+# Options flow
+CONF_DISTANCE_UNIT: Final = "distance_unit"
+DISTANCE_UNIT_MILES: Final = "miles"
+DISTANCE_UNIT_KILOMETERS: Final = "kilometers"
+
 # Service names
 SERVICE_ADD_ODOMETER: Final = "add_odometer_record"
 SERVICE_ADD_GAS: Final = "add_gas_record"

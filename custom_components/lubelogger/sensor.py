@@ -28,6 +28,9 @@ from .const import (
     ATTR_REMINDER_ID,
     ATTR_TAGS,
     ATTR_URGENCY,
+    CONF_DISTANCE_UNIT,
+    DISTANCE_UNIT_KILOMETERS,
+    DISTANCE_UNIT_MILES,
     DOMAIN,
     SENSOR_GAS_COST,
     SENSOR_NEXT_REMINDER,
@@ -36,6 +39,8 @@ from .const import (
     SENSOR_SERVICE_COST,
     SENSOR_TAX_COST,
     SENSOR_UPGRADE_COST,
+    UNIT_TYPE_CURRENCY,
+    UNIT_TYPE_DISTANCE,
 )
 from .coordinator import LubeLoggerDataUpdateCoordinator
 
@@ -46,6 +51,7 @@ class LubeLoggerSensorEntityDescription(SensorEntityDescription):
 
     value_fn: Callable[[dict[str, Any]], Any]
     attributes_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None
+    unit_type: str | None = None
 
 
 def _get_reminder_attributes(reminder: dict[str, Any] | None) -> dict[str, Any]:
@@ -78,7 +84,7 @@ SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
         translation_key=SENSOR_SERVICE_COST,
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="USD",
+        unit_type=UNIT_TYPE_CURRENCY,
         suggested_display_precision=2,
         value_fn=lambda data: data.get("serviceRecordCost"),
     ),
@@ -87,7 +93,7 @@ SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
         translation_key=SENSOR_REPAIR_COST,
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="USD",
+        unit_type=UNIT_TYPE_CURRENCY,
         suggested_display_precision=2,
         value_fn=lambda data: data.get("repairRecordCost"),
     ),
@@ -96,7 +102,7 @@ SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
         translation_key=SENSOR_UPGRADE_COST,
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="USD",
+        unit_type=UNIT_TYPE_CURRENCY,
         suggested_display_precision=2,
         value_fn=lambda data: data.get("upgradeRecordCost"),
     ),
@@ -105,7 +111,7 @@ SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
         translation_key=SENSOR_TAX_COST,
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="USD",
+        unit_type=UNIT_TYPE_CURRENCY,
         suggested_display_precision=2,
         value_fn=lambda data: data.get("taxRecordCost"),
     ),
@@ -114,7 +120,7 @@ SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
         translation_key=SENSOR_GAS_COST,
         device_class=SensorDeviceClass.MONETARY,
         state_class=SensorStateClass.TOTAL,
-        native_unit_of_measurement="USD",
+        unit_type=UNIT_TYPE_CURRENCY,
         suggested_display_precision=2,
         value_fn=lambda data: data.get("gasRecordCost"),
     ),
@@ -123,7 +129,7 @@ SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
         translation_key=SENSOR_ODOMETER,
         device_class=SensorDeviceClass.DISTANCE,
         state_class=SensorStateClass.TOTAL_INCREASING,
-        native_unit_of_measurement=UnitOfLength.MILES,
+        unit_type=UNIT_TYPE_DISTANCE,
         suggested_display_precision=0,
         value_fn=lambda data: data.get("lastReportedOdometer"),
     ),
@@ -216,6 +222,28 @@ class LubeLoggerSensor(CoordinatorEntity[LubeLoggerDataUpdateCoordinator], Senso
         """Return the state of the sensor."""
         vehicle_data = self.coordinator.data.get(self._vehicle_id, {})
         return self.entity_description.value_fn(vehicle_data)
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of measurement based on config.
+
+        Dynamically resolves units:
+        - Currency sensors use hass.config.currency
+        - Distance sensors use the unit configured in integration options
+        """
+        if self.entity_description.unit_type == UNIT_TYPE_CURRENCY:
+            return self.hass.config.currency or "USD"
+
+        if self.entity_description.unit_type == UNIT_TYPE_DISTANCE:
+            # Get user's configured distance unit from options
+            distance_unit = self.coordinator.config_entry.options.get(
+                CONF_DISTANCE_UNIT, DISTANCE_UNIT_MILES
+            )
+            if distance_unit == DISTANCE_UNIT_KILOMETERS:
+                return UnitOfLength.KILOMETERS
+            return UnitOfLength.MILES
+
+        return self.entity_description.native_unit_of_measurement
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

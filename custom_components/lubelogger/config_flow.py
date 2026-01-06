@@ -7,16 +7,33 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .api import (
     LubeLoggerApiClient,
     LubeLoggerAuthError,
     LubeLoggerConnectionError,
 )
-from .const import CONF_URL, DOMAIN
+from .const import (
+    CONF_DISTANCE_UNIT,
+    CONF_URL,
+    DISTANCE_UNIT_KILOMETERS,
+    DISTANCE_UNIT_MILES,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +50,12 @@ class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for LubeLogger."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Create the options flow."""
+        return LubeLoggerOptionsFlowHandler()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -152,4 +175,43 @@ class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+
+class LubeLoggerOptionsFlowHandler(OptionsFlow):
+    """Handle LubeLogger options."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage the options.
+
+        Allows users to configure the distance unit used in their LubeLogger instance.
+        """
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        # Get current value, defaulting to miles for backwards compatibility
+        current_unit = self.config_entry.options.get(
+            CONF_DISTANCE_UNIT, DISTANCE_UNIT_MILES
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_DISTANCE_UNIT,
+                        default=current_unit,
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": DISTANCE_UNIT_MILES, "label": "Miles"},
+                                {"value": DISTANCE_UNIT_KILOMETERS, "label": "Kilometers"},
+                            ],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                }
+            ),
         )

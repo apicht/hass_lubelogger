@@ -31,6 +31,28 @@
       "already_configured": "This LubeLogger instance is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "LubeLogger Options",
+        "description": "Configure the distance unit used in your LubeLogger instance.",
+        "data": {
+          "distance_unit": "Distance unit"
+        },
+        "data_description": {
+          "distance_unit": "Select the unit your LubeLogger uses for odometer readings"
+        }
+      }
+    }
+  },
+  "selector": {
+    "distance_unit": {
+      "options": {
+        "miles": "Miles",
+        "kilometers": "Kilometers"
+      }
+    }
+  },
   "entity": {
     "sensor": {
       "service_record_cost": {
