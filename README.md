@@ -45,10 +45,21 @@ A Home Assistant custom integration for [LubeLogger](https://github.com/hargata/
 
 ### OIDC Users
 
-If you use OIDC (OpenID Connect) for LubeLogger web login, the API still requires Basic Authentication credentials. You'll need to either:
+If you use OIDC (OpenID Connect) for LubeLogger web login, the API still requires Basic Authentication credentials. You'll need to create a dedicated API user:
 
-1. **Set a password** in your LubeLogger user settings, or
-2. **Create a dedicated API user** with username/password credentials
+1. Log in to LubeLogger as an admin
+2. Go to **Settings** → **Admin Panel** (or navigate to `/Admin`)
+3. Click **Manage Tokens** → **Generate** (uncheck **Notify**)
+4. Enter an email address for the API user (can be any email, e.g., `api@localhost`)
+5. Copy the generated token
+6. Navigate directly to the registration page:
+   ```
+   https://your-lubelogger-url/Login/Registration?token=YOUR_TOKEN&email=api@localhost
+   ```
+7. Create a username and password for the API user
+8. Use these credentials when configuring the Home Assistant integration
+
+**Note:** The registration page is accessible even when "Disable Regular Login" is enabled, as long as "Disable Registration" is not checked in Server Settings.
 
 ## Sensors
 
