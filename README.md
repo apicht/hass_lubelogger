@@ -135,38 +135,48 @@ Add a maintenance reminder.
 
 ### Log EV Charging from FordPass
 
-Automatically log charging sessions when your Ford EV finishes charging:
+Automatically log charging sessions when your Ford EV finishes charging. This example uses the [ha-fordpass](https://github.com/marq24/ha-fordpass) integration:
 
 ```yaml
 automation:
   - alias: "Log EV Charging to LubeLogger"
     trigger:
       - platform: state
-        entity_id: sensor.fordpass_charging_status
-        to: "Complete"
+        entity_id: sensor.2021_ford_mustang_mach_e_elvehcharging
+        from: "IN_PROGRESS"
+        to:
+          - "NOT_READY"
+          - "STOPPED"
+    variables:
+      charge_sensor: sensor.2021_ford_mustang_mach_e_energytransferlogentry
+      energy_kwh: "{{ states(charge_sensor) | float }}"
+      last_soc: "{{ state_attr(charge_sensor, 'stateOfCharge').lastSOC }}"
+      target_soc: "{{ state_attr(charge_sensor, 'targetSoc') }}"
     action:
       - service: lubelogger.add_gas_record
         data:
           device_id: "abc123def456"  # Your LubeLogger device ID
           date: "{{ now().strftime('%Y-%m-%d') }}"
-          odometer: "{{ states('sensor.fordpass_odometer') | float }}"
-          fuel_consumed: "{{ states('sensor.fordpass_energy_charged') | float }}"
-          cost: "{{ states('sensor.fordpass_estimated_charge_cost') | float }}"
-          is_fill_to_full: false
-          notes: "EV charging session"
+          odometer: "{{ states('sensor.2021_ford_mustang_mach_e_odometer') | float }}"
+          fuel_consumed: "{{ energy_kwh }}"
+          cost: "{{ (energy_kwh * states('sensor.electric_rate') | float) | round(2) }}"
+          is_fill_to_full: "{{ last_soc | int >= target_soc | int }}"
+          notes: "Charged {{ last_soc }}% (target {{ target_soc }}%)"
           tags: "ev,charging"
 ```
 
+**Note:** Replace `2021_ford_mustang_mach_e` with your vehicle's entity prefix. FordPass sensors use the format `sensor.<vehicle_name>_<sensor_key>`. The `is_fill_to_full` is set to true when the vehicle reaches its target charge level.
+
 ### Log Odometer on Arrival Home
 
-Record odometer when arriving home:
+Record odometer when arriving home using FordPass device tracker:
 
 ```yaml
 automation:
   - alias: "Log Odometer on Arrival Home"
     trigger:
       - platform: zone
-        entity_id: device_tracker.my_car
+        entity_id: device_tracker.2021_ford_mustang_mach_e_tracker
         zone: zone.home
         event: enter
     action:
@@ -174,7 +184,7 @@ automation:
         data:
           device_id: "abc123def456"  # Your LubeLogger device ID
           date: "{{ now().strftime('%Y-%m-%d') }}"
-          odometer: "{{ states('sensor.my_car_odometer') | float }}"
+          odometer: "{{ states('sensor.2021_ford_mustang_mach_e_odometer') | float }}"
           notes: "Auto-logged on arrival home"
 ```
 
