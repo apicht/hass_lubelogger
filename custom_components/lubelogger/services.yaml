@@ -2,15 +2,13 @@ add_odometer_record:
   name: Add Odometer Record
   description: Add a new odometer reading to a vehicle in LubeLogger
   fields:
-    vehicle_id:
-      name: Vehicle ID
-      description: The ID of the vehicle in LubeLogger
+    device_id:
+      name: Vehicle
+      description: The vehicle to add the odometer record to
       required: true
-      example: 1
       selector:
-        number:
-          min: 1
-          mode: box
+        device:
+          integration: lubelogger
     date:
       name: Date
       description: The date of the odometer reading (YYYY-MM-DD format)
@@ -48,15 +46,13 @@ add_gas_record:
   name: Add Gas Record
   description: Add a new fuel/gas record to a vehicle in LubeLogger. Can also be used for EV charging records.
   fields:
-    vehicle_id:
-      name: Vehicle ID
-      description: The ID of the vehicle in LubeLogger
+    device_id:
+      name: Vehicle
+      description: The vehicle to add the fuel/charging record to
       required: true
-      example: 1
       selector:
-        number:
-          min: 1
-          mode: box
+        device:
+          integration: lubelogger
     date:
       name: Date
       description: The date of the fuel purchase (YYYY-MM-DD format)
@@ -129,15 +125,13 @@ add_reminder:
   name: Add Reminder
   description: Add a maintenance reminder to a vehicle in LubeLogger
   fields:
-    vehicle_id:
-      name: Vehicle ID
-      description: The ID of the vehicle in LubeLogger
+    device_id:
+      name: Vehicle
+      description: The vehicle to add the reminder to
       required: true
-      example: 1
       selector:
-        number:
-          min: 1
-          mode: box
+        device:
+          integration: lubelogger
     description:
       name: Description
       description: What the reminder is for

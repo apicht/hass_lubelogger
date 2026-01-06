@@ -30,7 +30,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR]
 # Service schemas
 SERVICE_ADD_ODOMETER_SCHEMA = vol.Schema(
     {
-        vol.Required("vehicle_id"): cv.positive_int,
+        vol.Required("device_id"): cv.string,
         vol.Required("date"): cv.string,
         vol.Required("odometer"): vol.Coerce(float),
         vol.Optional("notes", default=""): cv.string,
@@ -40,7 +40,7 @@ SERVICE_ADD_ODOMETER_SCHEMA = vol.Schema(
 
 SERVICE_ADD_GAS_SCHEMA = vol.Schema(
     {
-        vol.Required("vehicle_id"): cv.positive_int,
+        vol.Required("device_id"): cv.string,
         vol.Required("date"): cv.string,
         vol.Required("odometer"): vol.Coerce(float),
         vol.Required("fuel_consumed"): vol.Coerce(float),
@@ -54,7 +54,7 @@ SERVICE_ADD_GAS_SCHEMA = vol.Schema(
 
 SERVICE_ADD_REMINDER_SCHEMA = vol.Schema(
     {
-        vol.Required("vehicle_id"): cv.positive_int,
+        vol.Required("device_id"): cv.string,
         vol.Required("description"): cv.string,
         vol.Optional("due_date"): cv.string,
         vol.Optional("due_odometer"): vol.Coerce(float),
@@ -171,7 +171,12 @@ async def _async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_add_odometer(call: ServiceCall) -> None:
         """Handle add_odometer_record service call."""
-        vehicle_id = call.data["vehicle_id"]
+        device_id = call.data["device_id"]
+        vehicle_id = _get_vehicle_id_from_device(hass, device_id)
+        if vehicle_id is None:
+            _LOGGER.error("Could not find vehicle for device %s", device_id)
+            return
+
         coordinator = _get_coordinator_for_vehicle(hass, vehicle_id)
         if coordinator is None:
             _LOGGER.error("Vehicle %s not found in any LubeLogger instance", vehicle_id)
@@ -194,7 +199,12 @@ async def _async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_add_gas(call: ServiceCall) -> None:
         """Handle add_gas_record service call."""
-        vehicle_id = call.data["vehicle_id"]
+        device_id = call.data["device_id"]
+        vehicle_id = _get_vehicle_id_from_device(hass, device_id)
+        if vehicle_id is None:
+            _LOGGER.error("Could not find vehicle for device %s", device_id)
+            return
+
         coordinator = _get_coordinator_for_vehicle(hass, vehicle_id)
         if coordinator is None:
             _LOGGER.error("Vehicle %s not found in any LubeLogger instance", vehicle_id)
@@ -221,7 +231,12 @@ async def _async_register_services(hass: HomeAssistant) -> None:
 
     async def handle_add_reminder(call: ServiceCall) -> None:
         """Handle add_reminder service call."""
-        vehicle_id = call.data["vehicle_id"]
+        device_id = call.data["device_id"]
+        vehicle_id = _get_vehicle_id_from_device(hass, device_id)
+        if vehicle_id is None:
+            _LOGGER.error("Could not find vehicle for device %s", device_id)
+            return
+
         coordinator = _get_coordinator_for_vehicle(hass, vehicle_id)
         if coordinator is None:
             _LOGGER.error("Vehicle %s not found in any LubeLogger instance", vehicle_id)
@@ -262,6 +277,33 @@ async def _async_register_services(hass: HomeAssistant) -> None:
         handle_add_reminder,
         schema=SERVICE_ADD_REMINDER_SCHEMA,
     )
+
+
+def _get_vehicle_id_from_device(
+    hass: HomeAssistant, device_id: str
+) -> int | None:
+    """Extract the LubeLogger vehicle ID from a Home Assistant device ID.
+
+    Args:
+        hass: Home Assistant instance.
+        device_id: The Home Assistant device registry ID.
+
+    Returns:
+        The LubeLogger vehicle ID, or None if not found.
+    """
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get(device_id)
+    if device is None:
+        return None
+
+    # Find the identifier that matches our domain
+    for identifier in device.identifiers:
+        if identifier[0] == DOMAIN:
+            try:
+                return int(identifier[1])
+            except (ValueError, IndexError):
+                return None
+    return None
 
 
 def _get_coordinator_for_vehicle(

@@ -95,7 +95,7 @@ Add a new odometer reading to a vehicle.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `vehicle_id` | Yes | The vehicle ID in LubeLogger |
+| `device_id` | Yes | The Home Assistant device ID (use device picker in UI) |
 | `date` | Yes | Date of reading (YYYY-MM-DD) |
 | `odometer` | Yes | Odometer value |
 | `notes` | No | Optional notes |
@@ -107,7 +107,7 @@ Add a fuel or charging record. Works for both gas/diesel vehicles and EVs.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `vehicle_id` | Yes | The vehicle ID in LubeLogger |
+| `device_id` | Yes | The Home Assistant device ID (use device picker in UI) |
 | `date` | Yes | Date of fill-up (YYYY-MM-DD) |
 | `odometer` | Yes | Odometer at fill-up |
 | `fuel_consumed` | Yes | Amount of fuel (gallons/liters) or energy (kWh) |
@@ -123,7 +123,7 @@ Add a maintenance reminder.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `vehicle_id` | Yes | The vehicle ID in LubeLogger |
+| `device_id` | Yes | The Home Assistant device ID (use device picker in UI) |
 | `description` | Yes | Reminder description |
 | `due_date` | No | Due date (YYYY-MM-DD) |
 | `due_odometer` | No | Due odometer reading |
@@ -147,7 +147,7 @@ automation:
     action:
       - service: lubelogger.add_gas_record
         data:
-          vehicle_id: 1
+          device_id: "abc123def456"  # Your LubeLogger device ID
           date: "{{ now().strftime('%Y-%m-%d') }}"
           odometer: "{{ states('sensor.fordpass_odometer') | float }}"
           fuel_consumed: "{{ states('sensor.fordpass_energy_charged') | float }}"
@@ -172,7 +172,7 @@ automation:
     action:
       - service: lubelogger.add_odometer_record
         data:
-          vehicle_id: 1
+          device_id: "abc123def456"  # Your LubeLogger device ID
           date: "{{ now().strftime('%Y-%m-%d') }}"
           odometer: "{{ states('sensor.my_car_odometer') | float }}"
           notes: "Auto-logged on arrival home"
@@ -187,7 +187,7 @@ automation:
   - alias: "LubeLogger Urgent Reminder Notification"
     trigger:
       - platform: state
-        entity_id: sensor.2020_ford_mustang_mach_e_next_reminder
+        entity_id: sensor.2021_ford_mustang_mach_e_next_reminder
         attribute: urgency
         to: "Urgent"
     action:
@@ -195,20 +195,19 @@ automation:
         data:
           title: "Vehicle Maintenance Due"
           message: >
-            {{ state_attr('sensor.2020_ford_mustang_mach_e_next_reminder', 'description') }}
-            is due in {{ state_attr('sensor.2020_ford_mustang_mach_e_next_reminder', 'due_days') }} days
-            or {{ state_attr('sensor.2020_ford_mustang_mach_e_next_reminder', 'due_distance') }} miles
+            {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'description') }}
+            is due in {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_days') }} days
+            or {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_distance') }} miles
 ```
 
-## Finding Your Vehicle ID
+## Finding Your Device ID
 
-The vehicle ID is assigned by LubeLogger. To find it:
+When creating automations in the Home Assistant UI, simply use the device picker to select your vehicle - no need to know the device ID.
 
-1. Open your LubeLogger web interface
-2. Navigate to the vehicle
-3. Look at the URL - it will contain the vehicle ID (e.g., `/Vehicle/Index?vehicleId=1`)
-
-Alternatively, you can enable debug logging to see vehicle IDs in the Home Assistant logs.
+For YAML automations, you can find the device ID by:
+1. Go to **Settings** → **Devices & Services** → **Devices**
+2. Find and click on your LubeLogger vehicle
+3. The device ID is in the URL (e.g., `/config/devices/device/abc123def456`)
 
 ## Troubleshooting
 
