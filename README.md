@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/apicht/hass_lubelogger)](https://github.com/apicht/hass_lubelogger/releases)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/apicht/hass_lubelogger)](https://github.com/apicht/hass_lubelogger/blob/main/LICENSE)
 
 A Home Assistant custom integration for [LubeLogger](https://github.com/hargata/lubelog), a self-hosted, open-source vehicle maintenance and fuel mileage tracker.
 
