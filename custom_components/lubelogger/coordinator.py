@@ -79,9 +79,16 @@ class LubeLoggerDataUpdateCoordinator(DataUpdateCoordinator[dict[int, dict[str, 
             for vehicle in vehicles_list:
                 vehicle_id = vehicle["id"]
                 try:
-                    vehicle_info = await self.client.get_vehicle_info(vehicle_id)
+                    vehicle_info_response = await self.client.get_vehicle_info(vehicle_id)
 
-                    # Merge basic vehicle info with detailed info
+                    # API returns a list with a single object, extract it
+                    if isinstance(vehicle_info_response, list) and vehicle_info_response:
+                        vehicle_info = vehicle_info_response[0]
+                    else:
+                        vehicle_info = vehicle_info_response
+
+                    # Merge basic vehicle info with the stats from vehicle_info
+                    # vehicle_info contains: vehicleData (nested), costs, counts, etc.
                     data[vehicle_id] = {
                         **vehicle,
                         **vehicle_info,

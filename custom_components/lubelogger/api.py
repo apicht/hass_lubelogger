@@ -184,10 +184,10 @@ class LubeLoggerApiClient:
         return await self._request(
             "POST",
             API_ADD_ODOMETER,
+            params={"vehicleId": vehicle_id},
             json_data={
-                "vehicleId": vehicle_id,
                 "date": date,
-                "odometer": odometer,
+                "odometer": int(odometer),
                 "notes": notes,
                 "tags": tags,
             },
@@ -224,10 +224,10 @@ class LubeLoggerApiClient:
         return await self._request(
             "POST",
             API_ADD_GAS,
+            params={"vehicleId": vehicle_id},
             json_data={
-                "vehicleId": vehicle_id,
                 "date": date,
-                "odometer": odometer,
+                "odometer": int(odometer),
                 "fuelConsumed": fuel_consumed,
                 "cost": cost,
                 "isFillToFull": is_fill_to_full,
@@ -262,7 +262,6 @@ class LubeLoggerApiClient:
             API response confirming the reminder was added.
         """
         data: dict[str, Any] = {
-            "vehicleId": vehicle_id,
             "description": description,
             "metric": metric,
             "notes": notes,
@@ -271,5 +270,10 @@ class LubeLoggerApiClient:
         if due_date:
             data["dueDate"] = due_date
         if due_odometer is not None:
-            data["dueOdometer"] = due_odometer
-        return await self._request("POST", API_ADD_REMINDER, json_data=data)
+            data["dueOdometer"] = int(due_odometer)
+        return await self._request(
+            "POST",
+            API_ADD_REMINDER,
+            params={"vehicleId": vehicle_id},
+            json_data=data,
+        )
