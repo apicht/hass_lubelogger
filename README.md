@@ -145,6 +145,7 @@ automation:
         entity_id: sensor.2021_ford_mustang_mach_e_elvehcharging
         from: "IN_PROGRESS"
         to:
+          - "COMPLETED"
           - "NOT_READY"
           - "STOPPED"
     variables:
