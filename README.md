@@ -75,6 +75,17 @@ For each vehicle, the integration creates the following sensors:
 | Odometer | Last reported odometer reading | Distance |
 | Next Reminder | Description of the next upcoming reminder | - |
 
+### Gas Record Cost Attributes
+
+The Gas Record Cost sensor includes attributes from the most recent fuel/charging record:
+
+- `last_odometer` - Odometer reading at last fill-up
+- `last_date` - Date of last fill-up
+- `last_fuel_consumed` - Fuel/energy amount of last fill-up
+- `last_cost` - Cost of last fill-up
+
+**Note:** Use `last_odometer` instead of the Odometer sensor when calculating miles driven between fill-ups. The Odometer sensor reflects the latest reading from any record type (service, tax, etc.), which can cause incorrect fuel economy calculations.
+
 ### Next Reminder Attributes
 
 The Next Reminder sensor includes additional attributes:
@@ -167,6 +178,59 @@ automation:
 ```
 
 **Note:** Replace `2021_ford_mustang_mach_e` with your vehicle's entity prefix. FordPass sensors use the format `sensor.<vehicle_name>_<sensor_key>`. The `is_fill_to_full` is set to true when the vehicle reaches its target charge level.
+
+### Log EV Charging with Notification Summary
+
+Extended version that sends a notification after logging with cost, energy consumed, miles driven, and fuel economy:
+
+```yaml
+automation:
+  - alias: "Log EV Charging to LubeLogger with Notification"
+    trigger:
+      - platform: state
+        entity_id: sensor.2023_ford_mustang_mach_e_elvehcharging
+        from: "IN_PROGRESS"
+        to:
+          - "COMPLETED"
+          - "NOT_READY"
+          - "STOPPED"
+    variables:
+      # FordPass sensors
+      charge_sensor: sensor.2023_ford_mustang_mach_e_energytransferlogentry
+      fordpass_odometer: sensor.2023_ford_mustang_mach_e_odometer
+      # LubeLogger sensor for last fuel record odometer
+      lubelogger_gas_cost: sensor.lubelogger_2023_ford_mustang_mach_e_gas_record_cost
+      # Values from FordPass
+      energy_kwh: "{{ states(charge_sensor) | float }}"
+      last_soc: "{{ state_attr(charge_sensor, 'stateOfCharge').lastSOC }}"
+      target_soc: "{{ state_attr(charge_sensor, 'targetSoc') }}"
+      current_odometer: "{{ states(fordpass_odometer) | float }}"
+      previous_odometer: "{{ state_attr(lubelogger_gas_cost, 'last_odometer') | float }}"
+      total_cost: "{{ (energy_kwh * states('sensor.electric_rate') | float) | round(2) }}"
+      # Calculated values for notification
+      miles_driven: "{{ (current_odometer - previous_odometer) | round(1) }}"
+      fuel_economy: "{{ ((current_odometer - previous_odometer) / energy_kwh) | round(2) if energy_kwh > 0 else 'N/A' }}"
+    action:
+      - service: lubelogger.add_gas_record
+        data:
+          device_id: "abc123def456"  # Your LubeLogger device ID
+          date: "{{ now().strftime('%Y-%m-%d') }}"
+          odometer: "{{ current_odometer }}"
+          fuel_consumed: "{{ energy_kwh }}"
+          cost: "{{ total_cost }}"
+          is_fill_to_full: "{{ last_soc | int >= target_soc | int }}"
+          notes: "Charged {{ last_soc }}% (target {{ target_soc }}%)"
+          tags: "ev,charging"
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "EV Charging Logged"
+          message: >
+            Added {{ energy_kwh }} kWh for ${{ total_cost }}
+            Miles since last charge: {{ miles_driven }}
+            Fuel economy: {{ fuel_economy }} mi/kWh
+```
+
+**Note:** This example uses the `last_odometer` attribute from the Gas Record Cost sensor to get the odometer reading from the last fuel record. This ensures accurate fuel economy calculations even if you've added service or other records between fill-ups.
 
 ### Log Odometer on Arrival Home
 

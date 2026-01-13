@@ -93,6 +93,20 @@ class LubeLoggerDataUpdateCoordinator(DataUpdateCoordinator[dict[int, dict[str, 
                         **vehicle,
                         **vehicle_info,
                     }
+
+                    # Fetch gas records and store the last one for attributes
+                    try:
+                        gas_records = await self.client.get_gas_records(vehicle_id)
+                        if gas_records:
+                            # Last record in the list is the most recent
+                            data[vehicle_id]["lastGasRecord"] = gas_records[-1]
+                    except LubeLoggerApiError as err:
+                        _LOGGER.warning(
+                            "Failed to fetch gas records for vehicle %s: %s",
+                            vehicle_id,
+                            err,
+                        )
+
                 except LubeLoggerApiError as err:
                     # Log error but continue with other vehicles
                     _LOGGER.warning(

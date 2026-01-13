@@ -12,6 +12,7 @@ from .const import (
     API_ADD_GAS,
     API_ADD_ODOMETER,
     API_ADD_REMINDER,
+    API_GET_GAS,
     API_VEHICLE_INFO,
     API_VEHICLES,
 )
@@ -159,6 +160,21 @@ class LubeLoggerApiClient:
             "GET",
             API_VEHICLE_INFO,
             params={"VehicleId": vehicle_id},
+        )
+
+    async def get_gas_records(self, vehicle_id: int) -> list[dict[str, Any]]:
+        """Get all gas/fuel records for a vehicle.
+
+        Args:
+            vehicle_id: The ID of the vehicle.
+
+        Returns:
+            List of gas record dictionaries, ordered chronologically (oldest first).
+        """
+        return await self._request(
+            "GET",
+            API_GET_GAS,
+            params={"vehicleId": vehicle_id},
         )
 
     async def add_odometer_record(

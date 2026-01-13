@@ -19,6 +19,7 @@ API_VEHICLE_INFO: Final = "/api/vehicle/info"
 API_ADD_ODOMETER: Final = "/api/vehicle/odometerrecords/add"
 API_ADD_GAS: Final = "/api/vehicle/gasrecords/add"
 API_ADD_REMINDER: Final = "/api/vehicle/reminders/add"
+API_GET_GAS: Final = "/api/vehicle/gasrecords"
 
 # Sensor keys
 SENSOR_SERVICE_COST: Final = "service_record_cost"
@@ -52,3 +53,9 @@ ATTR_DUE_ODOMETER: Final = "due_odometer"
 ATTR_DUE_DAYS: Final = "due_days"
 ATTR_DUE_DISTANCE: Final = "due_distance"
 ATTR_TAGS: Final = "tags"
+
+# Attribute keys for gas_record_cost sensor
+ATTR_LAST_ODOMETER: Final = "last_odometer"
+ATTR_LAST_DATE: Final = "last_date"
+ATTR_LAST_FUEL_CONSUMED: Final = "last_fuel_consumed"
+ATTR_LAST_COST: Final = "last_cost"

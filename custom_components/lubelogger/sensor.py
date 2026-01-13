@@ -24,6 +24,10 @@ from .const import (
     ATTR_DUE_DAYS,
     ATTR_DUE_DISTANCE,
     ATTR_DUE_ODOMETER,
+    ATTR_LAST_COST,
+    ATTR_LAST_DATE,
+    ATTR_LAST_FUEL_CONSUMED,
+    ATTR_LAST_ODOMETER,
     ATTR_METRIC,
     ATTR_REMINDER_ID,
     ATTR_TAGS,
@@ -78,6 +82,26 @@ def _get_reminder_attributes(reminder: dict[str, Any] | None) -> dict[str, Any]:
     }
 
 
+def _get_gas_record_attributes(gas_record: dict[str, Any] | None) -> dict[str, Any]:
+    """Extract attributes from the last gas record.
+
+    Args:
+        gas_record: The lastGasRecord dictionary from vehicle data.
+
+    Returns:
+        Dictionary of gas record attributes for the sensor.
+    """
+    if not gas_record:
+        return {}
+
+    return {
+        ATTR_LAST_ODOMETER: gas_record.get("odometer"),
+        ATTR_LAST_DATE: gas_record.get("date"),
+        ATTR_LAST_FUEL_CONSUMED: gas_record.get("fuelConsumed"),
+        ATTR_LAST_COST: gas_record.get("cost"),
+    }
+
+
 SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
     LubeLoggerSensorEntityDescription(
         key=SENSOR_SERVICE_COST,
@@ -123,6 +147,7 @@ SENSOR_DESCRIPTIONS: tuple[LubeLoggerSensorEntityDescription, ...] = (
         unit_type=UNIT_TYPE_CURRENCY,
         suggested_display_precision=2,
         value_fn=lambda data: data.get("gasRecordCost"),
+        attributes_fn=lambda data: _get_gas_record_attributes(data.get("lastGasRecord")),
     ),
     LubeLoggerSensorEntityDescription(
         key=SENSOR_ODOMETER,
