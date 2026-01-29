@@ -199,7 +199,7 @@ automation:
       charge_sensor: sensor.2023_ford_mustang_mach_e_energytransferlogentry
       fordpass_odometer: sensor.2023_ford_mustang_mach_e_odometer
       # LubeLogger sensor for last fuel record odometer
-      lubelogger_gas_cost: sensor.lubelogger_2023_ford_mustang_mach_e_gas_record_cost
+      lubelogger_gas_cost: sensor.2023_ford_mustang_mach_e_gas_record_cost
       # Values from FordPass
       energy_kwh: "{{ states(charge_sensor) | float }}"
       last_soc: "{{ state_attr(charge_sensor, 'stateOfCharge').lastSOC }}"
