@@ -10,7 +10,7 @@
           "password": "Password"
         },
         "data_description": {
-          "url": "Full URL to your LubeLogger instance (e.g., https://lubelogger.example.com)"
+          "url": "Full URL to your LubeLogger instance"
         }
       },
       "reauth_confirm": {
