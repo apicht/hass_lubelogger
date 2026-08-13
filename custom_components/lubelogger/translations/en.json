@@ -115,6 +115,14 @@
           "name": "Missed Fuel Up",
           "description": "Was a previous fill-up missed?"
         },
+        "starting_soc": {
+          "name": "Starting State of Charge",
+          "description": "EV state of charge (%) before the session."
+        },
+        "ending_soc": {
+          "name": "Ending State of Charge",
+          "description": "EV state of charge (%) after the session."
+        },
         "notes": {
           "name": "Notes",
           "description": "Optional notes for this record."

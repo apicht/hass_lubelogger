@@ -47,6 +47,8 @@ SERVICE_ADD_GAS_SCHEMA = vol.Schema(
         vol.Required("cost"): vol.Coerce(float),
         vol.Optional("is_fill_to_full", default=True): cv.boolean,
         vol.Optional("missed_fuel_up", default=False): cv.boolean,
+        vol.Optional("starting_soc"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+        vol.Optional("ending_soc"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
         vol.Optional("notes", default=""): cv.string,
         vol.Optional("tags", default=""): cv.string,
     }
@@ -230,6 +232,8 @@ async def _async_register_services(hass: HomeAssistant) -> None:
                 cost=call.data["cost"],
                 is_fill_to_full=call.data.get("is_fill_to_full", True),
                 missed_fuel_up=call.data.get("missed_fuel_up", False),
+                starting_soc=call.data.get("starting_soc"),
+                ending_soc=call.data.get("ending_soc"),
                 notes=call.data.get("notes", ""),
                 tags=call.data.get("tags", ""),
             )

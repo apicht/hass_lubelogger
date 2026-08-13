@@ -218,6 +218,8 @@ class LubeLoggerApiClient:
         cost: float,
         is_fill_to_full: bool = True,
         missed_fuel_up: bool = False,
+        starting_soc: int | None = None,
+        ending_soc: int | None = None,
         notes: str = "",
         tags: str = "",
     ) -> dict[str, Any]:
@@ -231,26 +233,37 @@ class LubeLoggerApiClient:
             cost: Total cost of the fuel.
             is_fill_to_full: Whether this was a complete fill-up.
             missed_fuel_up: Whether a previous fill-up was missed/not recorded.
+            starting_soc: Optional EV state of charge (%) before the session.
+            ending_soc: Optional EV state of charge (%) after the session.
             notes: Optional notes for the record.
             tags: Optional comma-separated tags.
 
         Returns:
             API response confirming the record was added.
+
+        Note:
+            LubeLogger substitutes its own defaults (20/80) when the SoC fields
+            are absent, so they are only sent when a value is supplied.
         """
+        data: dict[str, Any] = {
+            "date": date,
+            "odometer": int(odometer),
+            "fuelConsumed": fuel_consumed,
+            "cost": cost,
+            "isFillToFull": is_fill_to_full,
+            "missedFuelUp": missed_fuel_up,
+            "notes": notes,
+            "tags": tags,
+        }
+        if starting_soc is not None:
+            data["startingSoc"] = int(starting_soc)
+        if ending_soc is not None:
+            data["endingSoc"] = int(ending_soc)
         return await self._request(
             "POST",
             API_ADD_GAS,
             params={"vehicleId": vehicle_id},
-            json_data={
-                "date": date,
-                "odometer": int(odometer),
-                "fuelConsumed": fuel_consumed,
-                "cost": cost,
-                "isFillToFull": is_fill_to_full,
-                "missedFuelUp": missed_fuel_up,
-                "notes": notes,
-                "tags": tags,
-            },
+            json_data=data,
         )
 
     async def add_reminder(

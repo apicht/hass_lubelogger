@@ -105,6 +105,28 @@ add_gas_record:
       default: false
       selector:
         boolean:
+    starting_soc:
+      name: Starting State of Charge
+      description: EV state of charge before the session. Omitting this makes LubeLogger store its own default of 20%.
+      required: false
+      example: 59
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+          unit_of_measurement: "%"
+    ending_soc:
+      name: Ending State of Charge
+      description: EV state of charge after the session. Omitting this makes LubeLogger store its own default of 80%.
+      required: false
+      example: 95
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+          unit_of_measurement: "%"
     notes:
       name: Notes
       description: Optional notes for this record

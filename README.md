@@ -125,8 +125,15 @@ Add a fuel or charging record. Works for both gas/diesel vehicles and EVs.
 | `cost` | Yes | Total cost |
 | `is_fill_to_full` | No | Complete fill-up? (default: true) |
 | `missed_fuel_up` | No | Previous fill missed? (default: false) |
+| `starting_soc` | No | EV state of charge (%) before the session, 0-100 |
+| `ending_soc` | No | EV state of charge (%) after the session, 0-100 |
 | `notes` | No | Optional notes |
 | `tags` | No | Comma-separated tags |
+
+**On the SoC fields:** these require a LubeLogger version whose gas record screen
+exposes state of charge. Leave them out for non-EVs. Note that LubeLogger does not
+store a null when they are omitted — it substitutes its own defaults of 20% and 80%,
+so pass real values whenever you have them.
 
 ### lubelogger.add_reminder
 
@@ -162,6 +169,7 @@ automation:
     variables:
       charge_sensor: sensor.2021_ford_mustang_mach_e_energytransferlogentry
       energy_kwh: "{{ states(charge_sensor) | float }}"
+      first_soc: "{{ state_attr(charge_sensor, 'stateOfCharge').firstSOC }}"
       last_soc: "{{ state_attr(charge_sensor, 'stateOfCharge').lastSOC }}"
       target_soc: "{{ state_attr(charge_sensor, 'targetSoc') }}"
     action:
@@ -173,11 +181,13 @@ automation:
           fuel_consumed: "{{ energy_kwh }}"
           cost: "{{ (energy_kwh * states('sensor.electric_rate') | float) | round(2) }}"
           is_fill_to_full: "{{ last_soc | int >= target_soc | int }}"
-          notes: "Charged {{ last_soc }}% (target {{ target_soc }}%)"
+          starting_soc: "{{ first_soc | round(0) | int }}"
+          ending_soc: "{{ last_soc | round(0) | int }}"
+          notes: "Charged {{ first_soc }}% -> {{ last_soc }}% (target {{ target_soc }}%)"
           tags: "ev,charging"
 ```
 
-**Note:** Replace `2021_ford_mustang_mach_e` with your vehicle's entity prefix. FordPass sensors use the format `sensor.<vehicle_name>_<sensor_key>`. The `is_fill_to_full` is set to true when the vehicle reaches its target charge level.
+**Note:** Replace `2021_ford_mustang_mach_e` with your vehicle's entity prefix. FordPass sensors use the format `sensor.<vehicle_name>_<sensor_key>`. The `is_fill_to_full` is set to true when the vehicle reaches its target charge level. FordPass only refreshes the charge log entry once Ford's servers have the session, so check its `timeStamp` attribute before trusting `firstSOC`/`lastSOC` — see `ev_charging_lubelogger.yaml` for a version that falls back to live sensors when the entry is stale.
 
 ### Log EV Charging with Notification Summary
 
@@ -202,6 +212,7 @@ automation:
       lubelogger_gas_cost: sensor.2023_ford_mustang_mach_e_gas_record_cost
       # Values from FordPass
       energy_kwh: "{{ states(charge_sensor) | float }}"
+      first_soc: "{{ state_attr(charge_sensor, 'stateOfCharge').firstSOC }}"
       last_soc: "{{ state_attr(charge_sensor, 'stateOfCharge').lastSOC }}"
       target_soc: "{{ state_attr(charge_sensor, 'targetSoc') }}"
       current_odometer: "{{ states(fordpass_odometer) | float }}"
@@ -219,7 +230,9 @@ automation:
           fuel_consumed: "{{ energy_kwh }}"
           cost: "{{ total_cost }}"
           is_fill_to_full: "{{ last_soc | int >= target_soc | int }}"
-          notes: "Charged {{ last_soc }}% (target {{ target_soc }}%)"
+          starting_soc: "{{ first_soc | round(0) | int }}"
+          ending_soc: "{{ last_soc | round(0) | int }}"
+          notes: "Charged {{ first_soc }}% -> {{ last_soc }}% (target {{ target_soc }}%)"
           tags: "ev,charging"
       - service: notify.mobile_app_your_phone
         data:
