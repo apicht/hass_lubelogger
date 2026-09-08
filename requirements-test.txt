@@ -1,0 +1,2 @@
+# Pins the Home Assistant test harness. Bump alongside the HA version we target.
+pytest-homeassistant-custom-component==0.13.316

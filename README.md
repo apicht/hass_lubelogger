@@ -42,6 +42,49 @@ A Home Assistant custom integration for [LubeLogger](https://github.com/hargata/
    - **URL**: Full URL to your LubeLogger instance (e.g., `https://lubelogger.example.com`)
    - **Username**: Your LubeLogger username
    - **Password**: Your LubeLogger password
+   - **Distance unit**: The unit your LubeLogger instance uses for odometer readings
+
+### Distance Unit
+
+LubeLogger stores odometer readings as plain numbers, and its API does not report
+which unit they are in. The integration therefore has to be told, so that Home
+Assistant labels the Odometer sensor correctly instead of converting the value.
+
+Look at **Settings** → **Formatting** in LubeLogger. Two separate toggles put it
+in miles:
+
+| LubeLogger setting | Choose |
+|--------------------|--------|
+| "Use imperial calculation for fuel mileage (MPG)" **enabled** | Miles |
+| "Use UK MPG calculation" **enabled** (even with MPG off) | Miles |
+| Both **disabled** | Kilometers |
+
+UK MPG is the easy one to miss: it means miles per *imperial* gallon, so distances
+are in miles while the rest of the setup looks metric.
+
+The setup form pre-selects the unit matching your Home Assistant unit system
+(kilometers for metric, miles for US customary). To change it later, go to
+**Settings** → **Devices & Services** → **LubeLogger** → **Configure**.
+
+#### Upgrading from a version without this setting
+
+Existing configurations have no unit stored. On upgrade the integration writes
+the unit implied by your Home Assistant unit system and raises a repair under
+**Settings** → **Repairs** asking you to confirm it, because that guess is wrong
+for exactly the UK MPG case above. Confirming or correcting it dismisses the
+repair.
+
+If the guess was wrong, or if you correct a unit that was wrong before, expect a
+step in the sensor's history. Home Assistant will **not** warn you about it:
+miles and kilometers are inter-convertible, so instead of flagging a unit change
+it silently rescales new readings into the unit the statistics were first
+recorded in. A 64526 km reading previously stored as `64526 mi` starts arriving
+as `40094 mi`, and because the Odometer sensor is `total_increasing` that drop
+reads as a meter reset.
+
+To start clean, delete the sensor's long-term statistics under **Developer
+Tools** → **Statistics** before or after correcting the unit. There is nothing to
+fix if the unit was already right.
 
 ### OIDC Users
 
@@ -84,7 +127,7 @@ The Gas Record Cost sensor includes attributes from the most recent fuel/chargin
 - `last_fuel_consumed` - Fuel/energy amount of last fill-up
 - `last_cost` - Cost of last fill-up
 
-**Note:** Use `last_odometer` instead of the Odometer sensor when calculating miles driven between fill-ups. The Odometer sensor reflects the latest reading from any record type (service, tax, etc.), which can cause incorrect fuel economy calculations.
+**Note:** Use `last_odometer` instead of the Odometer sensor when calculating distance driven between fill-ups. The Odometer sensor reflects the latest reading from any record type (service, tax, etc.), which can cause incorrect fuel economy calculations.
 
 ### Next Reminder Attributes
 
@@ -98,7 +141,16 @@ The Next Reminder sensor includes additional attributes:
 - `due_days` - Days until due
 - `due_distance` - Distance until due
 
+**Note:** Attribute values are passed through from LubeLogger unchanged, so
+`last_odometer`, `due_odometer`, and `due_distance` are in whatever unit your
+LubeLogger instance uses. Only the Odometer sensor carries a unit and gets
+converted for display.
+
 ## Services
+
+**Note:** `odometer` and `due_odometer` are sent to LubeLogger as-is, so pass them
+in LubeLogger's unit. If you feed them from a Home Assistant template, remember
+that templates return the sensor's *displayed* value.
 
 ### lubelogger.add_odometer_record
 
@@ -191,7 +243,7 @@ automation:
 
 ### Log EV Charging with Notification Summary
 
-Extended version that sends a notification after logging with cost, energy consumed, miles driven, and fuel economy:
+Extended version that sends a notification after logging with cost, energy consumed, distance driven, and fuel economy:
 
 ```yaml
 automation:
@@ -285,7 +337,7 @@ automation:
           message: >
             {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'description') }}
             is due in {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_days') }} days
-            or {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_distance') }} miles
+            or {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_distance') }} mi/km
 ```
 
 ## Finding Your Device ID
@@ -322,6 +374,28 @@ logger:
   default: info
   logs:
     custom_components.lubelogger: debug
+```
+
+## Development
+
+Run the test suite against the Home Assistant test harness:
+
+```bash
+uv venv --python 3.13 .venv-test
+VIRTUAL_ENV=.venv-test uv pip install -r requirements-test.txt
+.venv-test/bin/python -m pytest
+```
+
+Run HACS validation locally:
+
+```bash
+docker run --rm -v $(pwd):/github/workspace ghcr.io/hacs/action:main
+```
+
+Run hassfest validation locally:
+
+```bash
+docker run --rm -v $(pwd)/custom_components:/github/workspace/custom_components ghcr.io/home-assistant/hassfest
 ```
 
 ## Contributing

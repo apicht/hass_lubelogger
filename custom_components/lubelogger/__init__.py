@@ -10,22 +10,33 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    issue_registry as ir,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import LubeLoggerApiClient, LubeLoggerApiError
 from .const import (
+    CONF_DISTANCE_UNIT,
+    CONF_DISTANCE_UNIT_CONFIRMED,
     CONF_URL,
     DOMAIN,
+    ISSUE_DISTANCE_UNIT_UNCONFIRMED,
     SERVICE_ADD_GAS,
     SERVICE_ADD_ODOMETER,
     SERVICE_ADD_REMINDER,
 )
 from .coordinator import LubeLoggerDataUpdateCoordinator
+from .util import default_distance_unit
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
+
+# Keep in step with LubeLoggerConfigFlow.VERSION
+CONFIG_ENTRY_VERSION = 2
 
 # Service schemas
 SERVICE_ADD_ODOMETER_SCHEMA = vol.Schema(
@@ -84,6 +95,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     Returns:
         True if setup was successful.
     """
+    _async_manage_distance_unit_issue(hass, entry)
+
     session = async_get_clientsession(hass)
     client = LubeLoggerApiClient(
         session,
@@ -125,6 +138,67 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+def distance_unit_issue_id(entry: ConfigEntry) -> str:
+    """Return the repairs issue id used for one config entry."""
+    return f"{ISSUE_DISTANCE_UNIT_UNCONFIRMED}_{entry.entry_id}"
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate an old config entry.
+
+    Version 1 entries predate the distance unit setting. LubeLogger's API
+    cannot report whether its odometer readings are miles or kilometers, so
+    the unit has to be stored on the entry; leaving it absent made the reading
+    depend on Home Assistant's unit system, a display preference the user can
+    change at any time.
+    """
+    if entry.version > CONFIG_ENTRY_VERSION:
+        # Downgraded from a newer release; the entry is not readable here.
+        return False
+
+    if entry.version == 1:
+        options = {**entry.options}
+        if CONF_DISTANCE_UNIT in options:
+            # Chosen through the options flow, so it is already the user's
+            # answer and needs no confirming.
+            options.setdefault(CONF_DISTANCE_UNIT_CONFIRMED, True)
+        else:
+            options[CONF_DISTANCE_UNIT] = default_distance_unit(hass)
+            options[CONF_DISTANCE_UNIT_CONFIRMED] = False
+        hass.config_entries.async_update_entry(entry, options=options, version=2)
+
+    return True
+
+
+def _async_manage_distance_unit_issue(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Raise or clear the repair asking the user to confirm the guessed unit.
+
+    The unit migrated onto the entry is only a guess from Home Assistant's
+    unit system. It is right for the common case but wrong for, among others,
+    LubeLogger's UK MPG mode, which reports miles on an otherwise metric
+    setup, so it is surfaced rather than trusted silently.
+    """
+    if entry.options.get(CONF_DISTANCE_UNIT_CONFIRMED):
+        ir.async_delete_issue(hass, DOMAIN, distance_unit_issue_id(entry))
+        return
+
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        distance_unit_issue_id(entry),
+        is_fixable=True,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=ISSUE_DISTANCE_UNIT_UNCONFIRMED,
+        translation_placeholders={
+            "title": entry.title,
+            "unit": entry.options.get(CONF_DISTANCE_UNIT, ""),
+        },
+        data={"entry_id": entry.entry_id},
+    )
+
+
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update.
 
@@ -147,6 +221,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Clean up the entry's repairs issue when it is deleted."""
+    ir.async_delete_issue(hass, DOMAIN, distance_unit_issue_id(entry))
 
 
 def _get_vehicle_name(vehicle_data: dict[str, Any]) -> str:

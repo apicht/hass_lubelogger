@@ -36,8 +36,15 @@ UNIT_TYPE_DISTANCE: Final = "distance"
 
 # Options flow
 CONF_DISTANCE_UNIT: Final = "distance_unit"
+# Records whether the distance unit was chosen by the user or guessed from
+# Home Assistant's unit system. A guess gets a repairs issue asking for
+# confirmation, since LubeLogger's API cannot report its own unit.
+CONF_DISTANCE_UNIT_CONFIRMED: Final = "distance_unit_confirmed"
 DISTANCE_UNIT_MILES: Final = "miles"
 DISTANCE_UNIT_KILOMETERS: Final = "kilometers"
+
+# Repairs
+ISSUE_DISTANCE_UNIT_UNCONFIRMED: Final = "distance_unit_unconfirmed"
 
 # Service names
 SERVICE_ADD_ODOMETER: Final = "add_odometer_record"
