@@ -6,9 +6,12 @@ import json
 from pathlib import Path
 
 import pytest
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.translation import async_get_translations
 
 from custom_components.lubelogger.const import (
     CONF_DISTANCE_UNIT,
+    DOMAIN,
     ISSUE_DISTANCE_UNIT_UNCONFIRMED,
 )
 
@@ -55,3 +58,60 @@ def test_repair_issue_is_translated(strings: dict) -> None:
     assert issue["title"]
     assert issue["fix_flow"]["step"]["confirm"]["description"]
     assert issue["fix_flow"]["abort"]["entry_not_found"]
+
+
+async def _resolved(hass: HomeAssistant, category: str) -> dict[str, str]:
+    """Return the translations Home Assistant actually resolves at runtime."""
+    return await async_get_translations(hass, "en", category, {DOMAIN})
+
+
+async def test_repair_translations_resolve_at_runtime(hass: HomeAssistant) -> None:
+    """Assert the keys HA looks up, not just the shape of the JSON.
+
+    A key nested one level wrong still satisfies the structural tests above and
+    passes hassfest, then renders as a blank card. Only resolution catches it.
+    """
+    issues = await _resolved(hass, "issues")
+    prefix = f"component.{DOMAIN}.issues.{ISSUE_DISTANCE_UNIT_UNCONFIRMED}"
+
+    for key in (
+        f"{prefix}.title",
+        f"{prefix}.fix_flow.step.confirm.title",
+        f"{prefix}.fix_flow.step.confirm.description",
+        f"{prefix}.fix_flow.step.confirm.data.{CONF_DISTANCE_UNIT}",
+        f"{prefix}.fix_flow.step.confirm.data_description.{CONF_DISTANCE_UNIT}",
+        f"{prefix}.fix_flow.abort.entry_not_found",
+    ):
+        assert issues.get(key), f"unresolved: {key}"
+
+    # The title is rendered with a placeholder the issue must supply.
+    assert "{title}" in issues[f"{prefix}.title"]
+
+
+async def test_selector_labels_resolve_at_runtime(hass: HomeAssistant) -> None:
+    """The dropdown gets its labels from translations, not hardcoded strings."""
+    selector = await _resolved(hass, "selector")
+
+    assert (
+        selector[f"component.{DOMAIN}.selector.{CONF_DISTANCE_UNIT}.options.miles"]
+        == "Miles"
+    )
+    assert (
+        selector[f"component.{DOMAIN}.selector.{CONF_DISTANCE_UNIT}.options.kilometers"]
+        == "Kilometers"
+    )
+
+
+@pytest.mark.parametrize(
+    ("category", "step_path"),
+    [("config", "config.step.user"), ("options", "options.step.init")],
+)
+async def test_unit_field_resolves_in_both_flows(
+    hass: HomeAssistant, category: str, step_path: str
+) -> None:
+    """Both places the field appears have a resolvable label and description."""
+    translations = await _resolved(hass, category)
+    base = f"component.{DOMAIN}.{step_path}"
+
+    assert translations.get(f"{base}.data.{CONF_DISTANCE_UNIT}")
+    assert translations.get(f"{base}.data_description.{CONF_DISTANCE_UNIT}")

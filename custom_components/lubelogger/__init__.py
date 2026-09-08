@@ -35,6 +35,9 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
+# Keep in step with LubeLoggerConfigFlow.VERSION
+CONFIG_ENTRY_VERSION = 2
+
 # Service schemas
 SERVICE_ADD_ODOMETER_SCHEMA = vol.Schema(
     {
@@ -92,7 +95,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     Returns:
         True if setup was successful.
     """
-    _async_ensure_distance_unit(hass, entry)
+    _async_manage_distance_unit_issue(hass, entry)
 
     session = async_get_clientsession(hass)
     client = LubeLoggerApiClient(
@@ -140,30 +143,46 @@ def distance_unit_issue_id(entry: ConfigEntry) -> str:
     return f"{ISSUE_DISTANCE_UNIT_UNCONFIRMED}_{entry.entry_id}"
 
 
-def _async_ensure_distance_unit(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Make sure the entry has a distance unit, and flag it if it was guessed.
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate an old config entry.
 
-    LubeLogger's API cannot report whether its odometer readings are miles or
-    kilometers, so entries created before the setting existed have nothing
-    stored. Persist a guess derived from Home Assistant's unit system, so the
-    reading stops depending on a display preference that can change later, and
-    raise a repairs issue asking the user to confirm it. The guess is right for
-    the common case but wrong for, among others, LubeLogger's UK MPG mode,
-    which reports miles on an otherwise metric setup.
+    Version 1 entries predate the distance unit setting. LubeLogger's API
+    cannot report whether its odometer readings are miles or kilometers, so
+    the unit has to be stored on the entry; leaving it absent made the reading
+    depend on Home Assistant's unit system, a display preference the user can
+    change at any time.
+    """
+    if entry.version > CONFIG_ENTRY_VERSION:
+        # Downgraded from a newer release; the entry is not readable here.
+        return False
+
+    if entry.version == 1:
+        options = {**entry.options}
+        if CONF_DISTANCE_UNIT in options:
+            # Chosen through the options flow, so it is already the user's
+            # answer and needs no confirming.
+            options.setdefault(CONF_DISTANCE_UNIT_CONFIRMED, True)
+        else:
+            options[CONF_DISTANCE_UNIT] = default_distance_unit(hass)
+            options[CONF_DISTANCE_UNIT_CONFIRMED] = False
+        hass.config_entries.async_update_entry(entry, options=options, version=2)
+
+    return True
+
+
+def _async_manage_distance_unit_issue(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Raise or clear the repair asking the user to confirm the guessed unit.
+
+    The unit migrated onto the entry is only a guess from Home Assistant's
+    unit system. It is right for the common case but wrong for, among others,
+    LubeLogger's UK MPG mode, which reports miles on an otherwise metric
+    setup, so it is surfaced rather than trusted silently.
     """
     if entry.options.get(CONF_DISTANCE_UNIT_CONFIRMED):
         ir.async_delete_issue(hass, DOMAIN, distance_unit_issue_id(entry))
         return
-
-    if CONF_DISTANCE_UNIT not in entry.options:
-        hass.config_entries.async_update_entry(
-            entry,
-            options={
-                **entry.options,
-                CONF_DISTANCE_UNIT: default_distance_unit(hass),
-                CONF_DISTANCE_UNIT_CONFIRMED: False,
-            },
-        )
 
     ir.async_create_issue(
         hass,

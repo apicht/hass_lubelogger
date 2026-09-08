@@ -54,7 +54,7 @@ def _user_step_schema(default_unit: str) -> vol.Schema:
 class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for LubeLogger."""
 
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     @callback
