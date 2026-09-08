@@ -82,10 +82,23 @@ class LubeLoggerDataUpdateCoordinator(DataUpdateCoordinator[dict[int, dict[str, 
                     vehicle_info_response = await self.client.get_vehicle_info(vehicle_id)
 
                     # API returns a list with a single object, extract it
-                    if isinstance(vehicle_info_response, list) and vehicle_info_response:
-                        vehicle_info = vehicle_info_response[0]
+                    if isinstance(vehicle_info_response, list):
+                        vehicle_info = (
+                            vehicle_info_response[0] if vehicle_info_response else None
+                        )
                     else:
                         vehicle_info = vehicle_info_response
+
+                    # An empty or non-object response would otherwise raise a
+                    # TypeError on the merge below, aborting the refresh for
+                    # every other vehicle too.
+                    if not isinstance(vehicle_info, dict):
+                        _LOGGER.warning(
+                            "Unexpected vehicle info response for vehicle %s: %r",
+                            vehicle_id,
+                            vehicle_info_response,
+                        )
+                        vehicle_info = {}
 
                     # Merge basic vehicle info with the stats from vehicle_info
                     # vehicle_info contains: vehicleData (nested), costs, counts, etc.
