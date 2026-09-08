@@ -11,9 +11,15 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(
+    recorder_db_url: str,
     enable_custom_integrations: None,
 ) -> Generator[None]:
-    """Enable loading of the custom_components directory in every test."""
+    """Enable loading of the custom_components directory in every test.
+
+    ``recorder_db_url`` is requested first purely for ordering: it asserts that
+    ``hass`` has not been built yet, and this autouse fixture would otherwise
+    build it before any recorder fixture got the chance.
+    """
     yield
 
 

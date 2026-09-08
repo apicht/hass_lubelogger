@@ -75,12 +75,15 @@ for exactly the UK MPG case above. Confirming or correcting it dismisses the
 repair.
 
 If the guess was wrong, or if you correct a unit that was wrong before, expect a
-step in the sensor's history. Home Assistant will **not** warn you about it:
-miles and kilometers are inter-convertible, so instead of flagging a unit change
-it silently rescales new readings into the unit the statistics were first
-recorded in. A 64526 km reading previously stored as `64526 mi` starts arriving
-as `40094 mi`, and because the Odometer sensor is `total_increasing` that drop
-reads as a meter reset.
+step in the sensor's history. Home Assistant will **not** warn you about it. The
+unit your statistics are recorded in is fixed by your Home Assistant unit system,
+not by this setting, so correcting the setting changes the number without
+changing the unit — there is no unit change for Home Assistant to flag, and new
+readings are silently rescaled into the unit already on record. On a US customary
+install a 64526 km reading previously stored as `64526 mi` starts arriving as
+`40094 mi`; on a metric install one previously stored as `103844 km` starts
+arriving as `64526 km`. Either way the drop reads as a meter reset, because the
+Odometer sensor is `total_increasing`.
 
 To start clean, delete the sensor's long-term statistics under **Developer
 Tools** → **Statistics** before or after correcting the unit. There is nothing to
