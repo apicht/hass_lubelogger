@@ -172,3 +172,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Test harness virtualenv (see requirements-test.txt)
+.venv-test

@@ -32,9 +32,7 @@ from .const import (
     ATTR_REMINDER_ID,
     ATTR_TAGS,
     ATTR_URGENCY,
-    CONF_DISTANCE_UNIT,
     DISTANCE_UNIT_KILOMETERS,
-    DISTANCE_UNIT_MILES,
     DOMAIN,
     SENSOR_GAS_COST,
     SENSOR_NEXT_REMINDER,
@@ -47,6 +45,7 @@ from .const import (
     UNIT_TYPE_DISTANCE,
 )
 from .coordinator import LubeLoggerDataUpdateCoordinator
+from .util import resolve_distance_unit
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -254,15 +253,15 @@ class LubeLoggerSensor(CoordinatorEntity[LubeLoggerDataUpdateCoordinator], Senso
 
         Dynamically resolves units:
         - Currency sensors use hass.config.currency
-        - Distance sensors use the unit configured in integration options
+        - Distance sensors use the unit configured in integration options,
+          falling back to Home Assistant's unit system when unset
         """
         if self.entity_description.unit_type == UNIT_TYPE_CURRENCY:
             return self.hass.config.currency or "USD"
 
         if self.entity_description.unit_type == UNIT_TYPE_DISTANCE:
-            # Get user's configured distance unit from options
-            distance_unit = self.coordinator.config_entry.options.get(
-                CONF_DISTANCE_UNIT, DISTANCE_UNIT_MILES
+            distance_unit = resolve_distance_unit(
+                self.hass, self.coordinator.config_entry.options
             )
             if distance_unit == DISTANCE_UNIT_KILOMETERS:
                 return UnitOfLength.KILOMETERS

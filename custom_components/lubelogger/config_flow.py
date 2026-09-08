@@ -34,16 +34,34 @@ from .const import (
     DISTANCE_UNIT_MILES,
     DOMAIN,
 )
+from .util import default_distance_unit, resolve_distance_unit
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema(
-    {
-        vol.Required(CONF_URL): str,
-        vol.Required(CONF_USERNAME): str,
-        vol.Required(CONF_PASSWORD): str,
-    }
-)
+
+def _distance_unit_selector() -> SelectSelector:
+    """Return the distance unit dropdown, labelled from translations."""
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=[DISTANCE_UNIT_MILES, DISTANCE_UNIT_KILOMETERS],
+            mode=SelectSelectorMode.DROPDOWN,
+            translation_key=CONF_DISTANCE_UNIT,
+        )
+    )
+
+
+def _user_step_schema(default_unit: str) -> vol.Schema:
+    """Return the initial setup schema with the distance unit pre-selected."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_URL): str,
+            vol.Required(CONF_USERNAME): str,
+            vol.Required(CONF_PASSWORD): str,
+            vol.Required(
+                CONF_DISTANCE_UNIT, default=default_unit
+            ): _distance_unit_selector(),
+        }
+    )
 
 
 class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -90,13 +108,17 @@ class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
                     await self.async_set_unique_id(url)
                     self._abort_if_unique_id_configured()
 
-                    # Create the entry
+                    # Create the entry. The distance unit lives in options so
+                    # the options flow has a single place to read and write it.
                     return self.async_create_entry(
                         title=f"LubeLogger ({url})",
                         data={
                             CONF_URL: url,
                             CONF_USERNAME: user_input[CONF_USERNAME],
                             CONF_PASSWORD: user_input[CONF_PASSWORD],
+                        },
+                        options={
+                            CONF_DISTANCE_UNIT: user_input[CONF_DISTANCE_UNIT],
                         },
                     )
 
@@ -110,7 +132,9 @@ class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
+            data_schema=self.add_suggested_values_to_schema(
+                _user_step_schema(default_distance_unit(self.hass)), user_input
+            ),
             errors=errors,
         )
 
@@ -191,10 +215,9 @@ class LubeLoggerOptionsFlowHandler(OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
-        # Get current value, defaulting to miles for backwards compatibility
-        current_unit = self.config_entry.options.get(
-            CONF_DISTANCE_UNIT, DISTANCE_UNIT_MILES
-        )
+        # Entries created before this setting existed have nothing stored, so
+        # fall back to Home Assistant's unit system rather than to miles.
+        current_unit = resolve_distance_unit(self.hass, self.config_entry.options)
 
         return self.async_show_form(
             step_id="init",
@@ -203,15 +226,7 @@ class LubeLoggerOptionsFlowHandler(OptionsFlow):
                     vol.Required(
                         CONF_DISTANCE_UNIT,
                         default=current_unit,
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                {"value": DISTANCE_UNIT_MILES, "label": "Miles"},
-                                {"value": DISTANCE_UNIT_KILOMETERS, "label": "Kilometers"},
-                            ],
-                            mode=SelectSelectorMode.DROPDOWN,
-                        )
-                    ),
+                    ): _distance_unit_selector(),
                 }
             ),
         )

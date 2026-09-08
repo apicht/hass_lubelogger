@@ -42,6 +42,30 @@ A Home Assistant custom integration for [LubeLogger](https://github.com/hargata/
    - **URL**: Full URL to your LubeLogger instance (e.g., `https://lubelogger.example.com`)
    - **Username**: Your LubeLogger username
    - **Password**: Your LubeLogger password
+   - **Distance unit**: The unit your LubeLogger instance uses for odometer readings
+
+### Distance Unit
+
+LubeLogger stores odometer readings as plain numbers, and its API does not report
+which unit they are in. The integration therefore has to be told, so that Home
+Assistant labels the Odometer sensor correctly instead of converting the value.
+
+Look at **Settings** → **Formatting** in LubeLogger:
+
+| LubeLogger setting | Choose |
+|--------------------|--------|
+| "Use imperial calculation for fuel mileage (MPG)" **enabled** | Miles |
+| "Use imperial calculation for fuel mileage (MPG)" **disabled** | Kilometers |
+
+The setup form pre-selects the unit matching your Home Assistant unit system
+(kilometers for metric, miles for US customary). To change it later, go to
+**Settings** → **Devices & Services** → **LubeLogger** → **Configure**.
+
+If you had the integration installed before this setting existed and the odometer
+read about 1.6× too high, updating fixes it automatically — but Home Assistant
+keeps the old long-term statistics under the wrong unit. Clear them once via
+**Developer Tools** → **Statistics**, where the Odometer sensor will be listed as
+having a changed unit.
 
 ### OIDC Users
 
@@ -84,7 +108,7 @@ The Gas Record Cost sensor includes attributes from the most recent fuel/chargin
 - `last_fuel_consumed` - Fuel/energy amount of last fill-up
 - `last_cost` - Cost of last fill-up
 
-**Note:** Use `last_odometer` instead of the Odometer sensor when calculating miles driven between fill-ups. The Odometer sensor reflects the latest reading from any record type (service, tax, etc.), which can cause incorrect fuel economy calculations.
+**Note:** Use `last_odometer` instead of the Odometer sensor when calculating distance driven between fill-ups. The Odometer sensor reflects the latest reading from any record type (service, tax, etc.), which can cause incorrect fuel economy calculations.
 
 ### Next Reminder Attributes
 
@@ -98,7 +122,16 @@ The Next Reminder sensor includes additional attributes:
 - `due_days` - Days until due
 - `due_distance` - Distance until due
 
+**Note:** Attribute values are passed through from LubeLogger unchanged, so
+`last_odometer`, `due_odometer`, and `due_distance` are in whatever unit your
+LubeLogger instance uses. Only the Odometer sensor carries a unit and gets
+converted for display.
+
 ## Services
+
+**Note:** `odometer` and `due_odometer` are sent to LubeLogger as-is, so pass them
+in LubeLogger's unit. If you feed them from a Home Assistant template, remember
+that templates return the sensor's *displayed* value.
 
 ### lubelogger.add_odometer_record
 
@@ -191,7 +224,7 @@ automation:
 
 ### Log EV Charging with Notification Summary
 
-Extended version that sends a notification after logging with cost, energy consumed, miles driven, and fuel economy:
+Extended version that sends a notification after logging with cost, energy consumed, distance driven, and fuel economy:
 
 ```yaml
 automation:
@@ -285,7 +318,7 @@ automation:
           message: >
             {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'description') }}
             is due in {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_days') }} days
-            or {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_distance') }} miles
+            or {{ state_attr('sensor.2021_ford_mustang_mach_e_next_reminder', 'due_distance') }} mi/km
 ```
 
 ## Finding Your Device ID
@@ -322,6 +355,28 @@ logger:
   default: info
   logs:
     custom_components.lubelogger: debug
+```
+
+## Development
+
+Run the test suite against the Home Assistant test harness:
+
+```bash
+uv venv --python 3.13 .venv-test
+VIRTUAL_ENV=.venv-test uv pip install -r requirements-test.txt
+.venv-test/bin/python -m pytest
+```
+
+Run HACS validation locally:
+
+```bash
+docker run --rm -v $(pwd):/github/workspace ghcr.io/hacs/action:main
+```
+
+Run hassfest validation locally:
+
+```bash
+docker run --rm -v $(pwd)/custom_components:/github/workspace/custom_components ghcr.io/home-assistant/hassfest
 ```
 
 ## Contributing

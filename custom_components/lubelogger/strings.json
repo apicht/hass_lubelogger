@@ -7,10 +7,12 @@
         "data": {
           "url": "URL",
           "username": "Username",
-          "password": "Password"
+          "password": "Password",
+          "distance_unit": "Distance unit"
         },
         "data_description": {
-          "url": "Full URL to your LubeLogger instance"
+          "url": "Full URL to your LubeLogger instance",
+          "distance_unit": "The unit your LubeLogger instance uses for odometer readings. LubeLogger uses miles when \"Use imperial calculation for fuel mileage (MPG)\" is enabled in its Formatting settings, and kilometers when it is not."
         }
       },
       "reauth_confirm": {
@@ -40,7 +42,7 @@
           "distance_unit": "Distance unit"
         },
         "data_description": {
-          "distance_unit": "Select the unit your LubeLogger uses for odometer readings"
+          "distance_unit": "The unit your LubeLogger instance uses for odometer readings. LubeLogger uses miles when \"Use imperial calculation for fuel mileage (MPG)\" is enabled in its Formatting settings, and kilometers when it is not."
         }
       }
     }
