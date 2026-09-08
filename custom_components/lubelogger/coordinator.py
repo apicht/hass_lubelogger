@@ -77,15 +77,34 @@ class LubeLoggerDataUpdateCoordinator(DataUpdateCoordinator[dict[int, dict[str, 
             # Then fetch detailed info for each vehicle
             data: dict[int, dict[str, Any]] = {}
             for vehicle in vehicles_list:
+                # A vehicle we cannot identify is skipped rather than allowed
+                # to raise, which would discard the other vehicles too.
+                if not isinstance(vehicle, dict) or "id" not in vehicle:
+                    _LOGGER.warning("Skipping malformed vehicle entry: %r", vehicle)
+                    continue
+
                 vehicle_id = vehicle["id"]
                 try:
                     vehicle_info_response = await self.client.get_vehicle_info(vehicle_id)
 
                     # API returns a list with a single object, extract it
-                    if isinstance(vehicle_info_response, list) and vehicle_info_response:
-                        vehicle_info = vehicle_info_response[0]
+                    if isinstance(vehicle_info_response, list):
+                        vehicle_info = (
+                            vehicle_info_response[0] if vehicle_info_response else None
+                        )
                     else:
                         vehicle_info = vehicle_info_response
+
+                    # An empty or non-object response would otherwise raise a
+                    # TypeError on the merge below, aborting the refresh for
+                    # every other vehicle too.
+                    if not isinstance(vehicle_info, dict):
+                        _LOGGER.warning(
+                            "Unexpected vehicle info response for vehicle %s: %r",
+                            vehicle_id,
+                            vehicle_info_response,
+                        )
+                        vehicle_info = {}
 
                     # Merge basic vehicle info with the stats from vehicle_info
                     # vehicle_info contains: vehicleData (nested), costs, counts, etc.
@@ -97,7 +116,13 @@ class LubeLoggerDataUpdateCoordinator(DataUpdateCoordinator[dict[int, dict[str, 
                     # Fetch gas records and store the last one for attributes
                     try:
                         gas_records = await self.client.get_gas_records(vehicle_id)
-                        if gas_records:
+                        if not isinstance(gas_records, list):
+                            _LOGGER.warning(
+                                "Unexpected gas records response for vehicle %s: %r",
+                                vehicle_id,
+                                gas_records,
+                            )
+                        elif gas_records:
                             # Last record in the list is the most recent
                             data[vehicle_id]["lastGasRecord"] = gas_records[-1]
                     except LubeLoggerApiError as err:
