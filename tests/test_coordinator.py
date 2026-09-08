@@ -171,3 +171,48 @@ async def test_connection_failure_is_retried_not_reauthed(
 
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    [{"make": "Ford", "model": "Kuga"}, "not-a-vehicle"],
+    ids=["missing_id", "not_an_object"],
+)
+async def test_unidentifiable_vehicle_is_skipped(
+    hass: HomeAssistant, malformed: Any
+) -> None:
+    """A vehicle with no usable id must not take the whole refresh down.
+
+    ``vehicle["id"]`` is read before the per-vehicle ``try``, so a ``KeyError``
+    there is not a ``LubeLoggerApiError`` and escapes both handlers - Home
+    Assistant's own catch-all then discards the data for every vehicle in the
+    cycle, not just this one.
+    """
+    client = _client([STATS], vehicles=[malformed, TWO_VEHICLES[1]])
+    coordinator = _coordinator(hass, client)
+
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success
+    assert set(coordinator.data) == {2}
+    assert coordinator.data[2]["lastReportedOdometer"] == ODOMETER_RAW
+
+
+async def test_unexpected_gas_records_shape_keeps_the_vehicle(
+    hass: HomeAssistant,
+) -> None:
+    """Gas records that are not a list must not abort the refresh.
+
+    ``gas_records[-1]`` raises ``KeyError`` on a dict, which the surrounding
+    ``except LubeLoggerApiError`` does not catch, so one odd response would
+    cost every vehicle its data rather than just its last-fill attributes.
+    """
+    client = _client([STATS])
+    client.get_gas_records.return_value = {"unexpected": "shape"}
+    coordinator = _coordinator(hass, client)
+
+    await coordinator.async_refresh()
+
+    assert coordinator.last_update_success
+    assert coordinator.data[1]["gasRecordCost"] == 12.5
+    assert "lastGasRecord" not in coordinator.data[1]
