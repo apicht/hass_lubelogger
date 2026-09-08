@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.translation import async_get_translations
 
@@ -18,12 +19,20 @@ from custom_components.lubelogger.const import (
 COMPONENT_DIR = Path(__file__).parent.parent / "custom_components" / "lubelogger"
 STRINGS = COMPONENT_DIR / "strings.json"
 EN = COMPONENT_DIR / "translations" / "en.json"
+SERVICES = COMPONENT_DIR / "services.yaml"
 
 
 @pytest.fixture(name="strings")
 def strings_fixture() -> dict:
     """Return the parsed strings.json."""
     return json.loads(STRINGS.read_text())
+
+
+@pytest.fixture(name="service_fields")
+def service_fields_fixture() -> dict[str, set[str]]:
+    """Return the field names services.yaml declares, per service."""
+    services = yaml.safe_load(SERVICES.read_text())
+    return {name: set(service["fields"]) for name, service in services.items()}
 
 
 def test_en_translations_match_strings(strings: dict) -> None:
@@ -115,3 +124,38 @@ async def test_unit_field_resolves_in_both_flows(
 
     assert translations.get(f"{base}.data.{CONF_DISTANCE_UNIT}")
     assert translations.get(f"{base}.data_description.{CONF_DISTANCE_UNIT}")
+
+
+def test_service_fields_are_documented(
+    strings: dict, service_fields: dict[str, set[str]]
+) -> None:
+    """services.yaml and strings.json must name the same fields.
+
+    The services took a `device_id` device picker from the day the device
+    selector landed, but the translations still documented the `vehicle_id`
+    field it replaced: three dead keys, and no label for the field that is
+    actually there.
+    """
+    assert set(strings["services"]) == set(service_fields)
+
+    for service, fields in service_fields.items():
+        documented = set(strings["services"][service]["fields"])
+        assert documented == fields, (
+            f"{service}: undocumented {sorted(fields - documented)}, "
+            f"stale {sorted(documented - fields)}"
+        )
+
+
+async def test_service_field_labels_resolve_at_runtime(
+    hass: HomeAssistant, service_fields: dict[str, set[str]]
+) -> None:
+    """Every field HA renders needs a resolvable name and description."""
+    services = await _resolved(hass, "services")
+
+    for service, fields in service_fields.items():
+        for field in fields:
+            prefix = f"component.{DOMAIN}.services.{service}.fields.{field}"
+            assert services.get(f"{prefix}.name"), f"unresolved: {prefix}.name"
+            assert services.get(
+                f"{prefix}.description"
+            ), f"unresolved: {prefix}.description"
