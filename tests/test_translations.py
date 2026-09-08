@@ -7,7 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from custom_components.lubelogger.const import CONF_DISTANCE_UNIT
+from custom_components.lubelogger.const import (
+    CONF_DISTANCE_UNIT,
+    ISSUE_DISTANCE_UNIT_UNCONFIRMED,
+)
 
 COMPONENT_DIR = Path(__file__).parent.parent / "custom_components" / "lubelogger"
 STRINGS = COMPONENT_DIR / "strings.json"
@@ -38,3 +41,17 @@ def test_distance_unit_is_labelled_everywhere(strings: dict) -> None:
 
     selector_options = strings["selector"][CONF_DISTANCE_UNIT]["options"]
     assert set(selector_options) == {"miles", "kilometers"}
+
+    repair = strings["issues"][ISSUE_DISTANCE_UNIT_UNCONFIRMED]["fix_flow"]["step"][
+        "confirm"
+    ]
+    assert CONF_DISTANCE_UNIT in repair["data"]
+    assert CONF_DISTANCE_UNIT in repair["data_description"]
+
+
+def test_repair_issue_is_translated(strings: dict) -> None:
+    """The repairs issue needs a title and a fix flow, or it renders bare."""
+    issue = strings["issues"][ISSUE_DISTANCE_UNIT_UNCONFIRMED]
+    assert issue["title"]
+    assert issue["fix_flow"]["step"]["confirm"]["description"]
+    assert issue["fix_flow"]["abort"]["entry_not_found"]

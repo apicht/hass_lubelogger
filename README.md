@@ -50,22 +50,41 @@ LubeLogger stores odometer readings as plain numbers, and its API does not repor
 which unit they are in. The integration therefore has to be told, so that Home
 Assistant labels the Odometer sensor correctly instead of converting the value.
 
-Look at **Settings** → **Formatting** in LubeLogger:
+Look at **Settings** → **Formatting** in LubeLogger. Two separate toggles put it
+in miles:
 
 | LubeLogger setting | Choose |
 |--------------------|--------|
 | "Use imperial calculation for fuel mileage (MPG)" **enabled** | Miles |
-| "Use imperial calculation for fuel mileage (MPG)" **disabled** | Kilometers |
+| "Use UK MPG calculation" **enabled** (even with MPG off) | Miles |
+| Both **disabled** | Kilometers |
+
+UK MPG is the easy one to miss: it means miles per *imperial* gallon, so distances
+are in miles while the rest of the setup looks metric.
 
 The setup form pre-selects the unit matching your Home Assistant unit system
 (kilometers for metric, miles for US customary). To change it later, go to
 **Settings** → **Devices & Services** → **LubeLogger** → **Configure**.
 
-If you had the integration installed before this setting existed and the odometer
-read about 1.6× too high, updating fixes it automatically — but Home Assistant
-keeps the old long-term statistics under the wrong unit. Clear them once via
-**Developer Tools** → **Statistics**, where the Odometer sensor will be listed as
-having a changed unit.
+#### Upgrading from a version without this setting
+
+Existing configurations have no unit stored. On upgrade the integration writes
+the unit implied by your Home Assistant unit system and raises a repair under
+**Settings** → **Repairs** asking you to confirm it, because that guess is wrong
+for exactly the UK MPG case above. Confirming or correcting it dismisses the
+repair.
+
+If the guess was wrong, or if you correct a unit that was wrong before, expect a
+step in the sensor's history. Home Assistant will **not** warn you about it:
+miles and kilometers are inter-convertible, so instead of flagging a unit change
+it silently rescales new readings into the unit the statistics were first
+recorded in. A 64526 km reading previously stored as `64526 mi` starts arriving
+as `40094 mi`, and because the Odometer sensor is `total_increasing` that drop
+reads as a meter reset.
+
+To start clean, delete the sensor's long-term statistics under **Developer
+Tools** → **Statistics** before or after correcting the unit. There is nothing to
+fix if the unit was already right.
 
 ### OIDC Users
 

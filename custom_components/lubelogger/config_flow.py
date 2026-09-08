@@ -16,11 +16,6 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.selector import (
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
-)
 
 from .api import (
     LubeLoggerApiClient,
@@ -29,25 +24,17 @@ from .api import (
 )
 from .const import (
     CONF_DISTANCE_UNIT,
+    CONF_DISTANCE_UNIT_CONFIRMED,
     CONF_URL,
-    DISTANCE_UNIT_KILOMETERS,
-    DISTANCE_UNIT_MILES,
     DOMAIN,
 )
-from .util import default_distance_unit, resolve_distance_unit
+from .util import (
+    default_distance_unit,
+    distance_unit_selector,
+    resolve_distance_unit,
+)
 
 _LOGGER = logging.getLogger(__name__)
-
-
-def _distance_unit_selector() -> SelectSelector:
-    """Return the distance unit dropdown, labelled from translations."""
-    return SelectSelector(
-        SelectSelectorConfig(
-            options=[DISTANCE_UNIT_MILES, DISTANCE_UNIT_KILOMETERS],
-            mode=SelectSelectorMode.DROPDOWN,
-            translation_key=CONF_DISTANCE_UNIT,
-        )
-    )
 
 
 def _user_step_schema(default_unit: str) -> vol.Schema:
@@ -59,7 +46,7 @@ def _user_step_schema(default_unit: str) -> vol.Schema:
             vol.Required(CONF_PASSWORD): str,
             vol.Required(
                 CONF_DISTANCE_UNIT, default=default_unit
-            ): _distance_unit_selector(),
+            ): distance_unit_selector(),
         }
     )
 
@@ -119,6 +106,7 @@ class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
                         },
                         options={
                             CONF_DISTANCE_UNIT: user_input[CONF_DISTANCE_UNIT],
+                            CONF_DISTANCE_UNIT_CONFIRMED: True,
                         },
                     )
 
@@ -133,7 +121,11 @@ class LubeLoggerConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(
-                _user_step_schema(default_distance_unit(self.hass)), user_input
+                _user_step_schema(default_distance_unit(self.hass)),
+                # Re-show what they typed, but never the password.
+                {k: v for k, v in user_input.items() if k != CONF_PASSWORD}
+                if user_input
+                else None,
             ),
             errors=errors,
         )
@@ -213,7 +205,11 @@ class LubeLoggerOptionsFlowHandler(OptionsFlow):
         Allows users to configure the distance unit used in their LubeLogger instance.
         """
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            # Saving the form is an explicit choice, so the unit is no longer a
+            # guess and the repairs issue can be retired.
+            return self.async_create_entry(
+                data={**user_input, CONF_DISTANCE_UNIT_CONFIRMED: True}
+            )
 
         # Entries created before this setting existed have nothing stored, so
         # fall back to Home Assistant's unit system rather than to miles.
@@ -226,7 +222,7 @@ class LubeLoggerOptionsFlowHandler(OptionsFlow):
                     vol.Required(
                         CONF_DISTANCE_UNIT,
                         default=current_unit,
-                    ): _distance_unit_selector(),
+                    ): distance_unit_selector(),
                 }
             ),
         )

@@ -12,7 +12,7 @@
         },
         "data_description": {
           "url": "Full URL to your LubeLogger instance",
-          "distance_unit": "The unit your LubeLogger instance uses for odometer readings. LubeLogger uses miles when \"Use imperial calculation for fuel mileage (MPG)\" is enabled in its Formatting settings, and kilometers when it is not."
+          "distance_unit": "The unit your LubeLogger instance uses for odometer readings. LubeLogger reports miles when either \"Use imperial calculation for fuel mileage (MPG)\" or \"Use UK MPG calculation\" is enabled in its Formatting settings, and kilometers when both are off."
         }
       },
       "reauth_confirm": {
@@ -42,7 +42,29 @@
           "distance_unit": "Distance unit"
         },
         "data_description": {
-          "distance_unit": "The unit your LubeLogger instance uses for odometer readings. LubeLogger uses miles when \"Use imperial calculation for fuel mileage (MPG)\" is enabled in its Formatting settings, and kilometers when it is not."
+          "distance_unit": "The unit your LubeLogger instance uses for odometer readings. LubeLogger reports miles when either \"Use imperial calculation for fuel mileage (MPG)\" or \"Use UK MPG calculation\" is enabled in its Formatting settings, and kilometers when both are off."
+        }
+      }
+    }
+  },
+  "issues": {
+    "distance_unit_unconfirmed": {
+      "title": "Confirm the distance unit for {title}",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Confirm the distance unit",
+            "description": "LubeLogger stores odometer readings as plain numbers and its API does not report which unit they are in, so **{title}** was set up with a unit guessed from your Home Assistant unit system.\n\nCheck **Settings** → **Formatting** in LubeLogger. It reports miles when either \"Use imperial calculation for fuel mileage (MPG)\" or \"Use UK MPG calculation\" is enabled, and kilometers when both are off.\n\nIf the guess was wrong, the Odometer sensor has been reading about 1.6× too high or too low. Correcting it here will leave a step in the sensor history.",
+            "data": {
+              "distance_unit": "Distance unit"
+            },
+            "data_description": {
+              "distance_unit": "The unit your LubeLogger instance uses for odometer readings. LubeLogger reports miles when either \"Use imperial calculation for fuel mileage (MPG)\" or \"Use UK MPG calculation\" is enabled in its Formatting settings, and kilometers when both are off."
+            }
+          }
+        },
+        "abort": {
+          "entry_not_found": "That LubeLogger configuration entry no longer exists."
         }
       }
     }

@@ -10,18 +10,26 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import (
+    config_validation as cv,
+    device_registry as dr,
+    issue_registry as ir,
+)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import LubeLoggerApiClient, LubeLoggerApiError
 from .const import (
+    CONF_DISTANCE_UNIT,
+    CONF_DISTANCE_UNIT_CONFIRMED,
     CONF_URL,
     DOMAIN,
+    ISSUE_DISTANCE_UNIT_UNCONFIRMED,
     SERVICE_ADD_GAS,
     SERVICE_ADD_ODOMETER,
     SERVICE_ADD_REMINDER,
 )
 from .coordinator import LubeLoggerDataUpdateCoordinator
+from .util import default_distance_unit
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,6 +92,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     Returns:
         True if setup was successful.
     """
+    _async_ensure_distance_unit(hass, entry)
+
     session = async_get_clientsession(hass)
     client = LubeLoggerApiClient(
         session,
@@ -125,6 +135,51 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+def distance_unit_issue_id(entry: ConfigEntry) -> str:
+    """Return the repairs issue id used for one config entry."""
+    return f"{ISSUE_DISTANCE_UNIT_UNCONFIRMED}_{entry.entry_id}"
+
+
+def _async_ensure_distance_unit(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Make sure the entry has a distance unit, and flag it if it was guessed.
+
+    LubeLogger's API cannot report whether its odometer readings are miles or
+    kilometers, so entries created before the setting existed have nothing
+    stored. Persist a guess derived from Home Assistant's unit system, so the
+    reading stops depending on a display preference that can change later, and
+    raise a repairs issue asking the user to confirm it. The guess is right for
+    the common case but wrong for, among others, LubeLogger's UK MPG mode,
+    which reports miles on an otherwise metric setup.
+    """
+    if entry.options.get(CONF_DISTANCE_UNIT_CONFIRMED):
+        ir.async_delete_issue(hass, DOMAIN, distance_unit_issue_id(entry))
+        return
+
+    if CONF_DISTANCE_UNIT not in entry.options:
+        hass.config_entries.async_update_entry(
+            entry,
+            options={
+                **entry.options,
+                CONF_DISTANCE_UNIT: default_distance_unit(hass),
+                CONF_DISTANCE_UNIT_CONFIRMED: False,
+            },
+        )
+
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        distance_unit_issue_id(entry),
+        is_fixable=True,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key=ISSUE_DISTANCE_UNIT_UNCONFIRMED,
+        translation_placeholders={
+            "title": entry.title,
+            "unit": entry.options.get(CONF_DISTANCE_UNIT, ""),
+        },
+        data={"entry_id": entry.entry_id},
+    )
+
+
 async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update.
 
@@ -147,6 +202,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Clean up the entry's repairs issue when it is deleted."""
+    ir.async_delete_issue(hass, DOMAIN, distance_unit_issue_id(entry))
 
 
 def _get_vehicle_name(vehicle_data: dict[str, Any]) -> str:

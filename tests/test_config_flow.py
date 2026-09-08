@@ -13,6 +13,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.lubelogger.const import (
     CONF_DISTANCE_UNIT,
+    CONF_DISTANCE_UNIT_CONFIRMED,
     CONF_URL,
     DISTANCE_UNIT_KILOMETERS,
     DISTANCE_UNIT_MILES,
@@ -40,6 +41,7 @@ def _schema_default(schema: vol.Schema, key: str) -> str:
         (METRIC_SYSTEM, DISTANCE_UNIT_KILOMETERS),
         (US_CUSTOMARY_SYSTEM, DISTANCE_UNIT_MILES),
     ],
+    ids=["metric", "us_customary"],
 )
 @pytest.mark.usefixtures("mock_api")
 async def test_user_step_defaults_unit_from_hass_unit_system(
@@ -71,16 +73,28 @@ async def test_user_step_stores_unit_in_options(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["options"] == {CONF_DISTANCE_UNIT: DISTANCE_UNIT_KILOMETERS}
+    assert result["options"] == {
+        CONF_DISTANCE_UNIT: DISTANCE_UNIT_KILOMETERS,
+        # An explicit choice at setup is confirmed, so no repair is raised.
+        CONF_DISTANCE_UNIT_CONFIRMED: True,
+    }
     assert CONF_DISTANCE_UNIT not in result["data"]
 
 
 @pytest.mark.usefixtures("mock_api")
+@pytest.mark.parametrize(
+    ("unit_system", "expected_default"),
+    [
+        (METRIC_SYSTEM, DISTANCE_UNIT_KILOMETERS),
+        (US_CUSTOMARY_SYSTEM, DISTANCE_UNIT_MILES),
+    ],
+    ids=["metric", "us_customary"],
+)
 async def test_options_flow_defaults_to_hass_unit_system_when_unset(
-    hass: HomeAssistant,
+    hass: HomeAssistant, unit_system, expected_default: str
 ) -> None:
     """An entry predating the setting shows HA's unit system, not miles."""
-    hass.config.units = METRIC_SYSTEM
+    hass.config.units = unit_system
     entry = MockConfigEntry(domain=DOMAIN, data=USER_INPUT, options={})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)
@@ -89,10 +103,7 @@ async def test_options_flow_defaults_to_hass_unit_system_when_unset(
     result = await hass.config_entries.options.async_init(entry.entry_id)
 
     assert result["type"] is FlowResultType.FORM
-    assert (
-        _schema_default(result["data_schema"], CONF_DISTANCE_UNIT)
-        == DISTANCE_UNIT_KILOMETERS
-    )
+    assert _schema_default(result["data_schema"], CONF_DISTANCE_UNIT) == expected_default
 
 
 @pytest.mark.usefixtures("mock_api")
@@ -122,3 +133,33 @@ async def test_options_flow_keeps_explicit_choice(hass: HomeAssistant) -> None:
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert entry.options[CONF_DISTANCE_UNIT] == DISTANCE_UNIT_KILOMETERS
+
+
+def _suggested(schema: vol.Schema, key: str) -> object:
+    """Return the suggested_value HA will prefill for a schema key."""
+    for marker in schema.schema:
+        if marker == key:
+            return (marker.description or {}).get("suggested_value")
+    pytest.fail(f"{key} missing from schema")
+
+
+async def test_error_reshow_keeps_input_but_not_the_password(
+    hass: HomeAssistant, mock_api
+) -> None:
+    """A failed connection re-shows what was typed, minus the password."""
+    hass.config.units = METRIC_SYSTEM
+    mock_api.test_connection.return_value = False
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {**USER_INPUT, CONF_DISTANCE_UNIT: DISTANCE_UNIT_MILES}
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+    schema = result["data_schema"]
+    assert _suggested(schema, CONF_USERNAME) == "user"
+    assert _suggested(schema, CONF_DISTANCE_UNIT) == DISTANCE_UNIT_MILES
+    assert _suggested(schema, CONF_PASSWORD) is None

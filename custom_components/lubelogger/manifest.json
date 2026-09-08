@@ -3,7 +3,7 @@
   "name": "LubeLogger",
   "codeowners": ["@apicht"],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": ["repairs"],
   "documentation": "https://github.com/apicht/hass_lubelogger",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
