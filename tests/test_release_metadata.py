@@ -4,6 +4,8 @@ import json
 import pathlib
 import re
 
+import yaml
+
 REPO_ROOT = pathlib.Path(__file__).parent.parent
 
 
@@ -37,3 +39,31 @@ def test_manifest_version_is_a_release_version() -> None:
     version = load_manifest()["version"]
 
     assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
+
+
+def load_release_workflow() -> dict:
+    workflow = REPO_ROOT / ".github" / "workflows" / "release.yml"
+    return yaml.safe_load(workflow.read_text())
+
+
+def test_release_workflow_triggers_on_version_tags() -> None:
+    """In YAML 1.1 the bare key `on` parses as True, hence the fallback."""
+    workflow = load_release_workflow()
+    triggers = workflow.get("on", workflow.get(True))
+
+    assert triggers["push"]["tags"] == ["v*"]
+
+
+def test_release_workflow_builds_the_filename_hacs_expects() -> None:
+    """Renaming one side without the other breaks every HACS install."""
+    workflow = load_release_workflow()
+    filename = load_hacs_json()["filename"]
+
+    scripts = "\n".join(
+        step["run"]
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+        if "run" in step
+    )
+
+    assert filename in scripts

@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v6
+
+      - name: Verify the tag matches the manifest version
+        id: version
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          release_version="${tag_version%%-*}"
+          manifest_version="$(jq -r .version custom_components/lubelogger/manifest.json)"
+          if [ "$release_version" != "$manifest_version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} implies version ${release_version}, but manifest.json declares ${manifest_version}. Bump the manifest or delete and re-push the tag."
+            exit 1
+          fi
+          echo "version=${release_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install test dependencies
+        run: pip install -r requirements-test.txt
+
+      - name: Run pytest
+        run: pytest
+
+      - name: Build lubelogger.zip
+        run: |
+          find custom_components/lubelogger -name '__pycache__' -type d -prune -exec rm -rf {} +
+          cd custom_components/lubelogger
+          zip -r "${GITHUB_WORKSPACE}/lubelogger.zip" .
+
+      - name: Verify the artifact
+        run: |
+          tmp="$(mktemp -d)"
+          unzip -q lubelogger.zip -d "$tmp"
+          if [ ! -f "$tmp/manifest.json" ]; then
+            echo "::error::lubelogger.zip has no manifest.json at its root. HACS extracts this archive straight into custom_components/lubelogger/, so a nested folder is a broken release."
+            exit 1
+          fi
+          if [ ! -f "$tmp/__init__.py" ]; then
+            echo "::error::lubelogger.zip is missing __init__.py."
+            exit 1
+          fi
+          zip_version="$(jq -r .version "$tmp/manifest.json")"
+          if [ "$zip_version" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::lubelogger.zip declares version ${zip_version}, expected ${{ steps.version.outputs.version }}."
+            exit 1
+          fi
+          echo "Artifact contents:"
+          ls -1 "$tmp"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prerelease=""
+          case "${GITHUB_REF_NAME}" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+          gh release create "${GITHUB_REF_NAME}" lubelogger.zip \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            ${prerelease}
