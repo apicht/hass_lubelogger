@@ -1,4 +1,6 @@
 {
   "name": "LubeLogger",
-  "homeassistant": "2025.12.0"
+  "homeassistant": "2025.12.0",
+  "zip_release": true,
+  "filename": "lubelogger.zip"
 }
