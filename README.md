@@ -29,9 +29,10 @@ A Home Assistant custom integration for [LubeLogger](https://github.com/hargata/
 
 ### Manual Installation
 
-1. Download the latest release from [GitHub](https://github.com/apicht/hass_lubelogger/releases)
-2. Extract and copy the `custom_components/lubelogger` folder to your Home Assistant `config/custom_components/` directory
-3. Restart Home Assistant
+1. Download `lubelogger.zip` from the [latest release](https://github.com/apicht/hass_lubelogger/releases/latest)
+2. Create the folder `config/custom_components/lubelogger/` in your Home Assistant config directory
+3. Extract the contents of `lubelogger.zip` into that folder — the zip holds `manifest.json` at its root, not a nested folder
+4. Restart Home Assistant
 
 ## Configuration
 
@@ -400,6 +401,28 @@ Run hassfest validation locally:
 ```bash
 docker run --rm -v $(pwd)/custom_components:/github/workspace/custom_components ghcr.io/home-assistant/hassfest
 ```
+
+### Releasing
+
+`custom_components/lubelogger/manifest.json` is the source of truth for the version.
+Pushing a `v*` tag runs `.github/workflows/release.yml`, which refuses to publish
+unless the tag matches the manifest, then builds `lubelogger.zip` and creates the
+GitHub release with auto-generated notes.
+
+1. In a pull request, bump `version` in `custom_components/lubelogger/manifest.json`
+   alongside whatever is shipping
+2. Merge to `main`
+3. Tag and push:
+
+```bash
+git tag v0.4.0
+git push origin v0.4.0
+```
+
+The zip contains the integration files at its root because HACS extracts a
+`zip_release` archive directly into `config/custom_components/lubelogger/`. The
+artifact name must stay in step with `filename` in `hacs.json`;
+`tests/test_release_metadata.py` fails if the two drift apart.
 
 ## Contributing
 
