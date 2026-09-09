@@ -47,6 +47,8 @@ jobs:
           zip -r "${GITHUB_WORKSPACE}/lubelogger.zip" .
 
       - name: Verify the artifact
+        env:
+          EXPECTED_VERSION: ${{ steps.version.outputs.version }}
         run: |
           tmp="$(mktemp -d)"
           unzip -q lubelogger.zip -d "$tmp"
@@ -58,9 +60,13 @@ jobs:
             echo "::error::lubelogger.zip is missing __init__.py."
             exit 1
           fi
+          if [ ! -d "$tmp/translations" ]; then
+            echo "::error::lubelogger.zip is missing the translations/ directory."
+            exit 1
+          fi
           zip_version="$(jq -r .version "$tmp/manifest.json")"
-          if [ "$zip_version" != "${{ steps.version.outputs.version }}" ]; then
-            echo "::error::lubelogger.zip declares version ${zip_version}, expected ${{ steps.version.outputs.version }}."
+          if [ "$zip_version" != "$EXPECTED_VERSION" ]; then
+            echo "::error::lubelogger.zip declares version ${zip_version}, expected ${EXPECTED_VERSION}."
             exit 1
           fi
           echo "Artifact contents:"

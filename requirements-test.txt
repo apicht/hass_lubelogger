@@ -1,2 +1,6 @@
 # Pins the Home Assistant test harness. Bump alongside the HA version we target.
 pytest-homeassistant-custom-component==0.13.316
+
+# Used by tests/test_release_metadata.py to parse workflow YAML. Present transitively
+# via homeassistant today; pinned here so the release workflow does not depend on that.
+pyyaml==6.0.3
